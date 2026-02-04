@@ -1,50 +1,65 @@
-# Welcome to your Expo app 👋
+# Dispatch.io 🚀
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A sophisticated mobile career ecosystem architected with **React Native** and **Expo**. Dispatch.io redefines the job search experience by integrating neural-matching logic to align candidate profiles with global opportunities in real-time.
 
-## Get started
+## Project Overview
+Dispatch.io is more than a job board; it is a career accelerator. Built for the modern professional, the platform features a sleek, high-performance interface that leverages **NativeWind** for dynamic styling and **Expo Router** for frictionless navigation. The highlight of the application is the **Dispatch Brain**, an AI-driven optimization layer that rewrites and aligns resumes to specific job requirements with a single tap.
 
-1. Install dependencies
+## Key Features
+*   **Neural Alignment Engine**: An AI-powered interface that analyzes job descriptions and suggests real-time resume refinements to maximize match rates.
+*   **Intelligent Dashboard**: A centralized hub for tracking application statuses, including views, interview invites, and pending technical tests.
+*   **Universal Search & Filtering**: Advanced job discovery tools with category-based chips and location-aware filtering.
+*   **Secure Auth Workflow**: A robust authentication system featuring secure OTP (One-Time Password) verification and email-based login.
+*   **Fluid UX/UI**: High-fidelity animations powered by **Lottie** and **Moti**, with full support for system-wide Dark and Light themes.
+*   **Interactive Job Feed**: Rich job cards displaying salary ranges, company logos, and metadata tags with bookmarking capabilities.
 
-   ```bash
-   npm install
-   ```
+## Usage Documentation
+### 1. Onboarding Journey
+The application begins with a high-fidelity onboarding sequence. Each screen utilizes **Lottie animations** to communicate core value propositions: AI refinement, automated applications, and smart job matching. Users can navigate through the sequence or skip directly to the authentication portal.
 
-2. Start the app
+### 2. Authentication & Verification
+Dispatch.io implements a secure email-first entry. 
+*   **Signup/Login**: Users enter their email and are prompted to create a password with real-time security requirement tracking (length, characters, numbers).
+*   **OTP Verification**: To ensure account security, a 5-digit verification code is sent. The interface features auto-focusing input fields and a resend timer logic.
 
-   ```bash
-   npx expo start
-   ```
+### 3. The Discovery Feed
+The Feed is the heart of the application. Users can search for specific roles or filter by categories like "Remote," "Engineering," or "Design." Each job card is interactive, allowing users to view full requirements, company details, and salary benchmarks before applying.
 
-In the output, you'll find options to open the app in a
+### 4. Neural Application Workflow (AI Co-Pilot)
+When applying, users can trigger the **AI Optimizer**. 
+*   **Scanning**: The "Dispatch Brain" scans the user's master profile against the target job API.
+*   **Refinement**: The system suggests specific bullet-point rewrites (e.g., changing generic experience into impact-driven metrics).
+*   **Dispatch**: Once aligned, the application is sent with a confirmed high match percentage.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Technologies Used
+| Technology | Purpose | Documentation |
+| :--- | :--- | :--- |
+| **TypeScript** | Type-safe development and scalability | [Docs](https://www.typescriptlang.org/) |
+| **Expo / React Native** | Cross-platform mobile framework | [Docs](https://expo.dev/) |
+| **NativeWind** | Utility-first styling (Tailwind CSS for Native) | [Docs](https://www.nativewind.dev/) |
+| **Expo Router** | File-based routing and navigation | [Docs](https://docs.expo.dev/router/introduction/) |
+| **Reanimated & Moti** | High-performance 60fps animations | [Docs](https://moti.fyi/) |
+| **Lottie** | Vector-based motion graphics | [Docs](https://airbnb.io/lottie/) |
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Contributing
+We welcome contributions from developers looking to improve the neural matching algorithm or the UI/UX.
+*   **Step 1**: Fork the repository.
+*   **Step 2**: Create a feature branch (`git checkout -b feature/AmazingFeature`).
+*   **Step 3**: Commit your changes (`git commit -m 'Add some AmazingFeature'`).
+*   **Step 4**: Push to the branch (`git push origin feature/AmazingFeature`).
+*   **Step 5**: Open a Pull Request.
 
-## Get a fresh project
+## Author
+**[Your Name/Username]**
+*   **GitHub**: [https://github.com/your-username]
+*   **LinkedIn**: [https://linkedin.com/in/your-profile]
+*   **Twitter**: [https://twitter.com/your-handle]
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
-```
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![React Native](https://img.shields.io/badge/react_native-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![Expo](https://img.shields.io/badge/expo-1C1E24?style=for-the-badge&logo=expo&logoColor=DFFF00)
+![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+[![Readme was generated by Dokugen](https://img.shields.io/badge/Readme%20was%20generated%20by-Dokugen-brightgreen)](https://www.npmjs.com/package/dokugen)

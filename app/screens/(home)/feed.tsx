@@ -87,7 +87,7 @@ export default function FeedScreen() {
 
     const renderJobItem = ({ item }: { item: typeof JOBS_DATA[0] }) => (
         <TouchableOpacity
-            onPress={() => router.push(`/screens/feed/${item.id}`)}
+            onPress={() => router.push(`/screens/feed/[id]`)}
             activeOpacity={0.7}
             style={{
                 backgroundColor: isDark ? '#18181b' : '#fff',
