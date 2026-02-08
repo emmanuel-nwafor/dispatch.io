@@ -28,7 +28,7 @@ export default function Login() {
             return;
         }
 
-        // Security Check: Email Regex Validation
+        // Regex Validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             Toast.show({
@@ -39,7 +39,7 @@ export default function Login() {
             return;
         }
 
-        // Success - Move to OTP
+        // Success
         Toast.show({
             type: 'success',
             text1: 'Welcome Back',

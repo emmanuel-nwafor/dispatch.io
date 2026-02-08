@@ -50,7 +50,7 @@ export default function Index() {
         ]),
         Animated.delay(1500),
       ]).start(() => {
-        router.replace('/screens/(home)');
+        router.replace('/screens/onboard/first-onboarding');
       });
     }
   }, [fontsLoaded]);

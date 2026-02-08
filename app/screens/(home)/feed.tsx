@@ -12,7 +12,7 @@ const JOBS_DATA = [
         id: '1',
         title: 'Senior Product Designer',
         company: 'Linear',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Linear_Logo.png', // Placeholder or use icon
+        logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Linear_Logo.png',
         location: 'San Francisco, CA',
         type: 'Remote',
         salary: '$180k - $220k',

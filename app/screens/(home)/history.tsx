@@ -11,7 +11,9 @@ export default function HistoryScreen() {
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
+            {/* Status bar */}
             <StatusBar style={isDark ? "light" : "dark"} />
+
             <SafeAreaView className="flex-1 justify-center items-center p-6">
                 <Text
                     style={{ fontFamily: 'Outfit-Bold', color: theme.text }}
