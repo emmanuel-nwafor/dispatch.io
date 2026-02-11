@@ -1,9 +1,9 @@
 export const Colors = {
     light: {
-        text: '#000000',
+        text: '#1e1e1e',
         background: '#FFFFFF',
         tint: '#000000',
-        brand: '#cceb00',
+        brand: '#84cc16',
         tabIconDefault: '#ccc',
         tabIconSelected: '#000000',
     },
@@ -11,7 +11,7 @@ export const Colors = {
         text: '#FFFFFF',
         background: '#000000',
         tint: '#FFFFFF',
-        brand: '#dfff00',
+        brand: '#84cc16',
         tabIconDefault: '#444',
         tabIconSelected: '#FFFFFF',
     },
