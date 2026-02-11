@@ -73,7 +73,7 @@ export default function SignupUserInputPassword() {
                         <View className="flex-row items-center mb-1">
                             <Image
                                 source={require('@/assets/images/logo.png')}
-                                style={{ width: wp('8%'), height: wp('8%'), tintColor: isDark ? theme.brand : undefined }}
+                                style={{ width: wp('8%'), height: wp('8%') }}
                                 resizeMode="contain"
                             />
                             <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }} className="text-xl ml-2">dispatch.io</Text>
