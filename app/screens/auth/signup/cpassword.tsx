@@ -12,7 +12,7 @@ import Toast from 'react-native-toast-message';
 
 export default function SignupUserInputConfirmPassword() {
     const router = useRouter();
-    const { password } = useLocalSearchParams<{ password: string }>(); // Get password from previous screen
+    const { password } = useLocalSearchParams<{ password: string }>();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';

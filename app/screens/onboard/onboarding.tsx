@@ -7,18 +7,16 @@ import {
     useColorScheme,
     FlatList,
     Animated,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import * as Haptics from 'expo-haptics';
 import { Colors } from '@/app/constants/Colors';
 
-// Onboarding Data Structure
 const ONBOARDING_DATA = [
     {
         id: '1',
@@ -54,20 +52,36 @@ export default function OnboardingScreen() {
     const slidesRef = useRef<FlatList>(null);
 
     const viewableItemsChanged = useRef(({ viewableItems }: any) => {
-        setCurrentIndex(viewableItems[0]?.index ?? 0);
+        if (viewableItems.length > 0) {
+            const nextIndex = viewableItems[0].index;
+            if (nextIndex !== currentIndex) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setCurrentIndex(nextIndex);
+            }
+        }
     }).current;
 
     const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-    const scrollToNext = () => {
+    const scrollToNext = async () => {
         if (currentIndex < ONBOARDING_DATA.length - 1) {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             slidesRef.current?.scrollToIndex({ index: currentIndex + 1 });
         } else {
-            router.replace('/screens/auth/role/role-select');
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.push('/screens/auth/role/role-select');
         }
     };
 
-    const skipToLast = () => {
+    const scrollToBack = async () => {
+        if (currentIndex > 0) {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            slidesRef.current?.scrollToIndex({ index: currentIndex - 1 });
+        }
+    };
+
+    const skipToLast = async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         slidesRef.current?.scrollToIndex({ index: ONBOARDING_DATA.length - 1 });
     };
 
@@ -79,22 +93,15 @@ export default function OnboardingScreen() {
             >
                 <LottieView
                     source={item.animation}
-                    style={{
-                        width: wp('50%'),
-                        height: wp('50%'),
-                    }}
+                    style={{ width: wp('50%'), height: wp('50%') }}
                     autoPlay
                     loop
                 />
             </View>
 
             <Text
-                style={{
-                    fontFamily: 'Outfit-Bold',
-                    color: theme.text,
-                    fontSize: wp('8%'),
-                }}
-                className="mb-4 text-center"
+                style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: wp('8.5%') }}
+                className="mb-4 text-center px-4"
             >
                 {item.title}
             </Text>
@@ -103,9 +110,9 @@ export default function OnboardingScreen() {
                 style={{
                     fontFamily: 'Outfit-Medium',
                     color: isDark ? '#a1a1aa' : '#6b7280',
-                    fontSize: wp('4.5%'),
+                    fontSize: wp('4.6%'),
                 }}
-                className="text-center px-8 leading-relaxed"
+                className="text-center px-10 leading-relaxed"
             >
                 {item.description}
             </Text>
@@ -117,10 +124,9 @@ export default function OnboardingScreen() {
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style={isDark ? "light" : "dark"} />
 
-            {/* Dynamic Background Gradient */}
             <LinearGradient
                 colors={[`${theme.brand}20`, 'transparent']}
-                start={ONBOARDING_DATA[currentIndex].gradientStart}
+                start={ONBOARDING_DATA[currentIndex]?.gradientStart || { x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 0.6 }}
                 style={StyleSheet.absoluteFill}
             />
@@ -142,19 +148,16 @@ export default function OnboardingScreen() {
                     ref={slidesRef}
                 />
 
-                {/* Footer Section */}
                 <View className="p-6">
                     {/* Pagination Dots */}
                     <View className="flex-row justify-center mb-10">
                         {ONBOARDING_DATA.map((_, i) => {
                             const inputRange = [(i - 1) * wp('100%'), i * wp('100%'), (i + 1) * wp('100%')];
-
                             const dotWidth = scrollX.interpolate({
                                 inputRange,
                                 outputRange: [10, 24, 10],
                                 extrapolate: 'clamp',
                             });
-
                             const opacity = scrollX.interpolate({
                                 inputRange,
                                 outputRange: [0.3, 1, 0.3],
@@ -177,12 +180,12 @@ export default function OnboardingScreen() {
                     <View className="flex-row justify-between items-center mb-4">
                         {currentIndex < ONBOARDING_DATA.length - 1 ? (
                             <>
-                                <TouchableOpacity onPress={skipToLast} activeOpacity={0.7}>
+                                <TouchableOpacity onPress={currentIndex === 0 ? skipToLast : scrollToBack} activeOpacity={0.7}>
                                     <Text
                                         style={{ fontFamily: 'Outfit-Medium' }}
                                         className="text-gray-400 text-lg ml-2"
                                     >
-                                        Skip
+                                        {currentIndex === 0 ? 'Skip' : 'Back'}
                                     </Text>
                                 </TouchableOpacity>
 
