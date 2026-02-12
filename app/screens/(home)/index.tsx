@@ -1,9 +1,10 @@
 import { Colors } from '@/app/constants/Colors';
+import JobFilterModal from '@/components/modals/JobFilterModal';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +14,8 @@ export default function HomeScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
+
+    const [filterVisible, setFilterVisible] = useState(false);
 
     // Mock Data for "Recommended" section
     const recommendedJobs = [
@@ -49,7 +52,7 @@ export default function HomeScreen() {
                     {/* AI CO-PILOT BANNER (The Hook) */}
                     <TouchableOpacity
                         activeOpacity={0.9}
-                        onPress={() => router.push('/screens/apply')}
+                        onPress={() => router.push('/screens/refine' as any)}
                         className="mx-6 mt-6 overflow-hidden rounded-[32px]"
                     >
                         <LinearGradient
@@ -61,7 +64,7 @@ export default function HomeScreen() {
                             <View className="z-10">
                                 <View className="bg-black/20 self-start px-2 py-1 rounded-md mb-2">
                                     <Text className="text-[9px] uppercase tracking-widest text-white" style={{ fontFamily: 'Outfit-Bold' }}>
-                                        AI Co-Pilot Active
+                                        Dispatch.io Co-Pilot
                                     </Text>
                                 </View>
                                 <Text className="text-2xl leading-7 text-white" style={{ fontFamily: 'Outfit-Bold' }}>
@@ -122,7 +125,9 @@ export default function HomeScreen() {
                     <View className="mt-8">
                         <View className="px-6 flex-row justify-between items-center mb-4">
                             <Text className="text-lg" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>Recommended for You</Text>
-                            <Ionicons name="options-outline" size={20} color={theme.text} />
+                            <TouchableOpacity onPress={() => setFilterVisible(true)}>
+                                <Ionicons name="options-outline" size={20} color={theme.text} />
+                            </TouchableOpacity>
                         </View>
 
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 24, paddingRight: 8 }}>
@@ -155,6 +160,15 @@ export default function HomeScreen() {
 
                 </ScrollView>
             </SafeAreaView>
+
+            <JobFilterModal
+                visible={filterVisible}
+                onClose={() => setFilterVisible(false)}
+                onApply={(filters) => {
+                    console.log('Applied Filters:', filters);
+                    setFilterVisible(false);
+                }}
+            />
         </View>
     );
 }

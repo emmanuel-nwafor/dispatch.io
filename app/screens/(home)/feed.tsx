@@ -1,9 +1,10 @@
 import { Colors } from '@/app/constants/Colors';
+import JobFilterModal from '@/components/modals/JobFilterModal';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { FlatList, Image, ScrollView, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { FlatList, Image, Text, TextInput, TouchableOpacity, View, useColorScheme, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Mock Data
@@ -51,7 +52,7 @@ const JOBS_DATA = [
         title: 'iOS Developer',
         company: 'Airbnb',
         logo: 'logo-airbnb',
-        isIcon: true, // using Ionicons
+        isIcon: true,
         location: 'New York, NY',
         type: 'Full-time',
         salary: '$190k - $240k',
@@ -85,9 +86,19 @@ export default function FeedScreen() {
     const [activeFilter, setActiveFilter] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Modal State
+    const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+    const [appliedFilters, setAppliedFilters] = useState(null);
+
+    const handleApplyFilters = (filters: any) => {
+        console.log('Applied Filters:', filters);
+        setAppliedFilters(filters);
+        // Here you would typically filter your JOBS_DATA based on these values
+    };
+
     const renderJobItem = ({ item }: { item: typeof JOBS_DATA[0] }) => (
         <TouchableOpacity
-            onPress={() => router.push(`/screens/feed/[id]`)}
+            onPress={() => router.push(`/screens/feed/${item.id}`)}
             activeOpacity={0.7}
             style={{
                 backgroundColor: isDark ? '#18181b' : '#fff',
@@ -186,7 +197,10 @@ export default function FeedScreen() {
                             onChangeText={setSearchQuery}
                         />
                     </View>
+
+                    {/* TRIGGER MODAL BUTTON */}
                     <TouchableOpacity
+                        onPress={() => setIsFilterModalVisible(true)}
                         style={{ backgroundColor: theme.brand }}
                         className="w-12 h-12 rounded-2xl items-center justify-center ml-3"
                     >
@@ -241,8 +255,14 @@ export default function FeedScreen() {
                         </View>
                     )}
                 />
-
             </SafeAreaView>
+
+            {/* Filter Modal Component */}
+            <JobFilterModal
+                visible={isFilterModalVisible}
+                onClose={() => setIsFilterModalVisible(false)}
+                onApply={handleApplyFilters}
+            />
         </View>
     );
 }

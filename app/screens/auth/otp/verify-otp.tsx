@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme, ActivityIndicator } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ export default function VerifyOtp() {
     const inputs = useRef<Array<TextInput | null>>([]);
     const [timer, setTimer] = useState(30);
     const [canResend, setCanResend] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         let interval: any;
@@ -35,7 +36,6 @@ export default function VerifyOtp() {
 
     const handleOtpChange = (value: string, index: number) => {
         const newOtp = [...otp];
-        // Only take the last character if the user somehow pastes/types more
         newOtp[index] = value.slice(-1);
         setOtp(newOtp);
 
@@ -45,13 +45,13 @@ export default function VerifyOtp() {
     };
 
     const handleKeyPress = (e: any, index: number) => {
-        // Correctly handle backspace to move focus back
         if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
             inputs.current[index - 1]?.focus();
         }
     };
 
     const handleResend = () => {
+        console.log("[OTP Flow]: User requested resend.");
         setTimer(30);
         setCanResend(false);
         Toast.show({
@@ -61,26 +61,58 @@ export default function VerifyOtp() {
         });
     };
 
-    const handleVerify = () => {
+    const handleVerify = async () => {
         const fullOtp = otp.join('');
-        if (fullOtp.length < 5) {
+
+        // Tracking: Empty input
+        if (fullOtp.length === 0) {
+            console.warn("[Verification Error]: Attempted verify with no digits.");
             Toast.show({
                 type: 'error',
-                text1: 'Invalid Code',
-                text2: 'Please enter the full 5-digit code.',
+                text1: 'Missing Code',
+                text2: 'Please enter the 5-digit code to continue.',
             });
             return;
         }
 
-        Toast.show({
-            type: 'success',
-            text1: 'Verified',
-            text2: 'Your account has been verified!',
-        });
+        // Tracking: Incomplete input
+        if (fullOtp.length < 5) {
+            console.warn(`[Verification Error]: Incomplete code entered: ${fullOtp.length}/5`);
+            Toast.show({
+                type: 'error',
+                text1: 'Invalid Code',
+                text2: `Please enter the full 5-digit code. You only entered ${fullOtp.length}.`,
+            });
+            return;
+        }
 
-        setTimeout(() => {
-            router.replace('/screens/(home)');
-        }, 1500);
+        setIsLoading(true);
+        console.log("[OTP Flow]: Verifying code:", fullOtp);
+
+        try {
+            // Simulated API call
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            Toast.show({
+                type: 'success',
+                text1: 'Verified',
+                text2: 'Your account has been verified!',
+            });
+
+            setTimeout(() => {
+                router.replace('/screens/(home)');
+            }, 1500);
+
+        } catch (error) {
+            console.error("[OTP Error]: Verification failed", error);
+            Toast.show({
+                type: 'error',
+                text1: 'Verification Error',
+                text2: 'Something went wrong. Please try again.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -144,6 +176,7 @@ export default function VerifyOtp() {
                                     keyboardType="number-pad"
                                     maxLength={1}
                                     value={digit}
+                                    editable={!isLoading}
                                     onChangeText={(val) => handleOtpChange(val, index)}
                                     onKeyPress={(e) => handleKeyPress(e, index)}
                                     selectionColor={theme.brand}
@@ -153,7 +186,7 @@ export default function VerifyOtp() {
 
                         <View style={{ alignItems: 'center', marginTop: 30 }}>
                             {canResend ? (
-                                <TouchableOpacity onPress={handleResend}>
+                                <TouchableOpacity onPress={handleResend} disabled={isLoading}>
                                     <Text style={{ fontFamily: 'Outfit-Bold', color: theme.brand }}>
                                         Resend Code
                                     </Text>
@@ -168,13 +201,21 @@ export default function VerifyOtp() {
                         </View>
 
                         <TouchableOpacity
-                            style={{ backgroundColor: isDark ? theme.brand : '#000000' }}
+                            style={{
+                                backgroundColor: isDark ? theme.brand : '#000000',
+                                opacity: isLoading ? 0.7 : 1
+                            }}
                             className="py-4 rounded-xl items-center mt-8 shadow-lg"
                             onPress={handleVerify}
+                            disabled={isLoading}
                         >
-                            <Text style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#000000' : '#FFFFFF' }} className="text-lg">
-                                Verify & Continue
-                            </Text>
+                            {isLoading ? (
+                                <ActivityIndicator size="small" color="#006400" />
+                            ) : (
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#000000' : '#FFFFFF' }} className="text-lg">
+                                    Verify & Continue
+                                </Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </KeyboardAwareScrollView>
