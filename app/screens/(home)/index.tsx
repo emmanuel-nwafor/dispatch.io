@@ -23,9 +23,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { Skeleton } from '@/components/skeletons/HomeSkeleton'; // Import base Skeleton
+import { Skeleton } from '@/components/skeletons/HomeSkeleton';
 
-// Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -43,7 +42,6 @@ export default function HomeScreen() {
     const [searchQuery, setSearchQuery] = useState('');
 
     const loadFeed = useCallback(() => {
-        // Use LayoutAnimation for a smooth "shimmer-to-content" transition
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsLoadingFeed(true);
 
@@ -117,7 +115,6 @@ export default function HomeScreen() {
         );
     }, [searchQuery]);
 
-    // Sub-component for Feed Skeleton to keep main code clean
     const FeedSkeleton = () => (
         <View style={{ paddingBottom: 100 }}>
             {[1, 2, 3].map((i) => (
@@ -152,7 +149,7 @@ export default function HomeScreen() {
 
                 <ScrollView
                     showsVerticalScrollIndicator={false}
-                    stickyHeaderIndices={[1]} // Index 1 is the Tab Bar View
+                    stickyHeaderIndices={[1]}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -161,13 +158,11 @@ export default function HomeScreen() {
                         />
                     }
                 >
-                    {/* SECTION 0: Top Content (Always visible, never disappears) */}
                     <View>
                         <PromotedBanner onPress={() => router.push('/screens/refine' as any)} />
                         <FeaturedCompanies />
                     </View>
 
-                    {/* SECTION 1: Sticky Tabs (Always visible) */}
                     <View
                         className="flex-row border-b"
                         style={{
@@ -202,7 +197,6 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* SECTION 2: Dynamic Content (Only this part swaps for Skeleton) */}
                     <View style={{ flex: 1 }}>
                         {isLoadingFeed ? (
                             <FeedSkeleton />
