@@ -5,6 +5,7 @@ import { Colors } from '@/app/constants/Colors';
 import { useColorScheme } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import ShareRepostModal from '../modals/ShareRepostModal';
+import { useRouter } from 'expo-router';
 
 interface FeedItemProps {
     item: {
@@ -33,6 +34,7 @@ interface FeedItemProps {
 }
 
 const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
+    const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
@@ -128,9 +130,16 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
         >
             <View className="flex-row px-4 py-4">
                 {/* Left Column: Avatar */}
-                <View className="mr-3">
-                    <Image source={{ uri: item.avatar }} className="w-12 h-12 rounded-full" />
-                </View>
+                <TouchableOpacity
+                    onPress={() => router.push({
+                        pathname: "/screens/profile/[id]" as any,
+                        // params: { id: company.id }
+                    })}
+                >
+                    <View className="mr-3">
+                        <Image source={{ uri: item.avatar }} className="w-12 h-12 rounded-full" />
+                    </View>
+                </TouchableOpacity>
 
                 {/* Right Column: Content */}
                 <View className="flex-1">

@@ -42,7 +42,7 @@ const FeaturedCompanies = () => {
                 {COMPANIES.map((company) => (
                     <TouchableOpacity
                         onPress={() => router.push({
-                            pathname: "/screens/featured-companies/[id]" as any,
+                            pathname: "/screens/profile/[id]" as any,
                             params: { id: company.id }
                         })}
                         key={company.id}
