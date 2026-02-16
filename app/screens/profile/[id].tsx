@@ -20,8 +20,6 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import FeedItem from '@/components/home/FeedItem';
 
-// Import your FeedItem component
-
 const { width } = Dimensions.get('window');
 
 export default function ProfileDetailsScreen() {
@@ -30,7 +28,7 @@ export default function ProfileDetailsScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
-    const [activeTab, setActiveTab] = useState('Posts'); // Defaulting to Posts for preview
+    const [activeTab, setActiveTab] = useState('Posts');
 
     const profile = {
         isCompany: true,
@@ -80,6 +78,46 @@ export default function ProfileDetailsScreen() {
                         url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000'
                     }
                 ]
+            },
+            {
+                id: 2,
+                user: 'Airbnb',
+                handle: '@airbnb_official',
+                avatar: 'https://cdn-icons-png.flaticon.com/512/2111/2111320.png',
+                time: '2h',
+                type: 'post',
+                content: 'The future of work is remote. We just launched our "Live Anywhere" program for employees! 🏠✨',
+                stats: {
+                    comments: '230',
+                    reposts: '1.1K',
+                    likes: '14.2K',
+                },
+                attachments: [
+                    {
+                        type: 'image',
+                        url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000'
+                    }
+                ]
+            },
+            {
+                id: 3,
+                user: 'Airbnb',
+                handle: '@airbnb_official',
+                avatar: 'https://cdn-icons-png.flaticon.com/512/2111/2111320.png',
+                time: '2h',
+                type: 'post',
+                content: 'The future of work is remote. We just launched our "Live Anywhere" program for employees! 🏠✨',
+                stats: {
+                    comments: '230',
+                    reposts: '1.1K',
+                    likes: '14.2K',
+                },
+                attachments: [
+                    {
+                        type: 'image',
+                        url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000'
+                    }
+                ]
             }
         ]
     };
@@ -88,7 +126,7 @@ export default function ProfileDetailsScreen() {
         <View style={{ flex: 1, backgroundColor: theme.background }}>
             <StatusBar style="light" />
 
-            {/* Sticky Top Nav */}
+            {/* Sticky Top Nav Button Overlay */}
             <View className="absolute z-20 w-full flex-row justify-between px-5 items-center"
                 style={{
                     top: Platform.OS === 'ios' ? hp('6%') : hp('4%'),
@@ -106,63 +144,74 @@ export default function ProfileDetailsScreen() {
                 </View>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} bounces={true}>
-                {/* 1. Brand Header */}
-                <View>
-                    <Image source={{ uri: profile.banner }} className="w-full h-44" resizeMode="cover" />
-                    <View className="px-4 flex-row justify-between items-end -mt-10">
-                        <View className="p-1 rounded-3xl" style={{ backgroundColor: theme.background }}>
-                            <Image source={{ uri: profile.logo }} className="w-24 h-24 rounded-2xl bg-white" resizeMode="contain" />
-                        </View>
-                        <TouchableOpacity
-                            className="px-6 py-2 rounded-full border-2 mb-2"
-                            style={{ backgroundColor: theme.text, borderColor: theme.text }}
-                        >
-                            <Text style={{ fontFamily: 'Outfit-Bold', color: theme.background }}>Follow</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* 2. Professional Identity */}
-                <View className="px-4 mt-3">
-                    <View className="flex-row items-center">
-                        <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('6%'), color: theme.text }}>{profile.name}</Text>
-                        {profile.verified && <MaterialCommunityIcons name="check-decagram" size={20} color="#1DA1F2" style={{ marginLeft: 4 }} />}
-                        {profile.isHiring && (
-                            <View className="ml-3 px-2 py-0.5 rounded bg-green-500/10 border border-green-500/20">
-                                <Text className="text-green-500" style={{ fontFamily: 'Outfit-Bold', fontSize: 10 }}>HIRING</Text>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={true}
+                stickyHeaderIndices={[1]}
+            >
+                <View style={{ backgroundColor: theme.background }}>
+                    <View>
+                        <Image source={{ uri: profile.banner }} className="w-full h-44" resizeMode="cover" />
+                        <View className="px-4 flex-row justify-between items-end -mt-10">
+                            <View className="p-1 rounded-3xl" style={{ backgroundColor: theme.background }}>
+                                <Image source={{ uri: profile.logo }} className="w-24 h-24 rounded-2xl bg-white" resizeMode="contain" />
                             </View>
-                        )}
-                    </View>
-                    <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Regular' }}>{profile.handle}</Text>
-
-                    <Text className="mt-3" style={{ fontFamily: 'Outfit-Regular', fontSize: wp('4%'), color: theme.text, lineHeight: 20 }}>
-                        {profile.headline}
-                    </Text>
-
-                    <View className="flex-row flex-wrap mt-3 gap-x-4 gap-y-1">
-                        <View className="flex-row items-center">
-                            <Ionicons name="location-outline" size={16} color="#71717a" />
-                            <Text className="text-zinc-500 ml-1" style={{ fontSize: wp('3.3%') }}>{profile.location}</Text>
-                        </View>
-                        <View className="flex-row items-center">
-                            <Ionicons name="link-outline" size={16} color={theme.brand} />
-                            <Text style={{ color: theme.brand, marginLeft: 1, fontSize: wp('3.3%') }}>{profile.website}</Text>
-                        </View>
-                        <View className="flex-row items-center">
-                            <Ionicons name="calendar-outline" size={16} color="#71717a" />
-                            <Text className="text-zinc-500 ml-1" style={{ fontSize: wp('3.3%') }}>{profile.joinedDate}</Text>
+                            <TouchableOpacity
+                                className="px-6 py-2 rounded-full border-2 mb-2"
+                                style={{ backgroundColor: theme.text, borderColor: theme.text }}
+                            >
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.background }}>Follow</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
-                    <View className="flex-row mt-4 gap-x-4">
-                        <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{profile.stats.following} <Text className="text-zinc-500 font-normal">Following</Text></Text>
-                        <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{profile.stats.followers} <Text className="text-zinc-500 font-normal">Followers</Text></Text>
+                    {/* Professional Identity */}
+                    <View className="px-4 mt-3">
+                        <View className="flex-row items-center">
+                            <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('6%'), color: theme.text }}>{profile.name}</Text>
+                            {profile.verified && <MaterialCommunityIcons name="check-decagram" size={20} color="#1DA1F2" style={{ marginLeft: 4 }} />}
+                            {profile.isHiring && (
+                                <View className="ml-3 px-2 py-0.5 rounded bg-green-500/10 border border-green-500/20">
+                                    <Text className="text-green-500" style={{ fontFamily: 'Outfit-Bold', fontSize: 10 }}>HIRING</Text>
+                                </View>
+                            )}
+                        </View>
+                        <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Regular' }}>{profile.handle}</Text>
+
+                        <Text className="mt-3" style={{ fontFamily: 'Outfit-Regular', fontSize: wp('4%'), color: theme.text, lineHeight: 20 }}>
+                            {profile.headline}
+                        </Text>
+
+                        <View className="flex-row flex-wrap mt-3 gap-x-4 gap-y-1">
+                            <View className="flex-row items-center">
+                                <Ionicons name="location-outline" size={16} color="#71717a" />
+                                <Text className="text-zinc-500 ml-1" style={{ fontSize: wp('3.3%') }}>{profile.location}</Text>
+                            </View>
+                            <View className="flex-row items-center">
+                                <Ionicons name="link-outline" size={16} color={theme.brand} />
+                                <Text style={{ color: theme.brand, marginLeft: 1, fontSize: wp('3.3%') }}>{profile.website}</Text>
+                            </View>
+                            <View className="flex-row items-center">
+                                <Ionicons name="calendar-outline" size={16} color="#71717a" />
+                                <Text className="text-zinc-500 ml-1" style={{ fontSize: wp('3.3%') }}>{profile.joinedDate}</Text>
+                            </View>
+                        </View>
+
+                        <View className="flex-row mt-4 mb-4 gap-x-4">
+                            <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{profile.stats.following} <Text className="text-zinc-500 font-normal">Following</Text></Text>
+                            <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{profile.stats.followers} <Text className="text-zinc-500 font-normal">Followers</Text></Text>
+                        </View>
                     </View>
                 </View>
 
-                {/* 3. Tabs */}
-                <View className="flex-row border-b mt-6" style={{ borderColor: isDark ? '#2f3336' : '#eff3f4' }}>
+                {/* Section 2: STICKY TABS */}
+                <View
+                    className="flex-row border-b"
+                    style={{
+                        borderColor: isDark ? '#2f3336' : '#eff3f4',
+                        backgroundColor: theme.background
+                    }}
+                >
                     {['About', 'Jobs', 'Posts', 'Media'].map((tab) => (
                         <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} className="flex-1 items-center py-4">
                             <Text style={{
@@ -176,8 +225,8 @@ export default function ProfileDetailsScreen() {
                     ))}
                 </View>
 
-                {/* 4. Tab Content */}
-                <View style={{ minHeight: hp('50%') }}>
+                {/* Section 3: Tab Content */}
+                <View style={{ minHeight: hp('70%'), backgroundColor: theme.background }}>
                     {activeTab === 'About' && (
                         <View className="px-4 py-6">
                             <View className="mb-6">
