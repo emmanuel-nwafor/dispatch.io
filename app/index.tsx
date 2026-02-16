@@ -21,9 +21,10 @@ export default function Index() {
   const bgTransition = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({
-    'Outfit': require('@/assets/Outfit/static/Outfit-Regular.ttf'),
+    'Outfit-Regular': require('@/assets/Outfit/static/Outfit-Regular.ttf'),
     'Outfit-Medium': require('@/assets/Outfit/static/Outfit-Medium.ttf'),
     'Outfit-Bold': require('@/assets/Outfit/static/Outfit-Bold.ttf'),
+    'Outfit-Light': require('@/assets/Outfit/static/Outfit-Light.ttf'),
   });
 
   useEffect(() => {

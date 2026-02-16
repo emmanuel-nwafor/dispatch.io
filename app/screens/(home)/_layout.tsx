@@ -4,7 +4,6 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
-
 export default function TabLayout() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -18,7 +17,7 @@ export default function TabLayout() {
                 tabBarStyle: {
                     backgroundColor: theme.background,
                     borderTopWidth: 0.5,
-                    borderTopColor: colorScheme === 'dark' ? '#333' : '#eee', // Subtle border
+                    borderTopColor: colorScheme === 'dark' ? '#333' : '#eee',
                     height: Platform.OS === 'ios' ? 120 : 120,
                     position: "absolute",
                     paddingBottom: Platform.OS === 'ios' ? 28 : 10,
@@ -41,6 +40,13 @@ export default function TabLayout() {
                 options={{
                     title: 'Feed',
                     tabBarIcon: ({ color }) => <FontAwesome name="list-alt" size={24} color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="post"
+                options={{
+                    title: 'Post',
+                    tabBarIcon: ({ color }) => <FontAwesome name="plus-square-o" size={24} color={color} />,
                 }}
             />
             <Tabs.Screen

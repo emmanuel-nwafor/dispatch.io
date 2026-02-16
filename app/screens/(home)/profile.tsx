@@ -86,7 +86,7 @@ export default function ProfileScreen() {
             <StatusBar style={isDark ? "light" : "dark"} />
 
             <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} className='mb-20'>
                     {/* Header */}
                     <View style={{ paddingHorizontal: 24, paddingTop: 10, marginBottom: 30 }}>
                         <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 28 }}>
