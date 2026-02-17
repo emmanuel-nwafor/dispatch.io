@@ -197,10 +197,8 @@ export default function ProfileScreen() {
                 style={{
                     paddingHorizontal: wp('6%'),
                     paddingVertical: hp('2%'),
-                    borderTopWidth: 1,
-                    borderTopColor: isDark ? '#18181b' : '#f4f4f5'
                 }}
-                className="flex-row gap-4"
+                className="flex-row gap-4 mb-16"
             >
                 {step > 1 && (
                     <TouchableOpacity
@@ -208,7 +206,6 @@ export default function ProfileScreen() {
                         style={{ height: hp('7%') }}
                         className="flex-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 items-center justify-center flex-row"
                     >
-                        <Ionicons name="chevron-back" size={20} color={theme.text} className="mr-2" />
                         <Text style={{ color: theme.text }} className="font-[Outfit-Bold] text-lg">Back</Text>
                     </TouchableOpacity>
                 )}

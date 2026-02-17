@@ -11,6 +11,7 @@ module.exports = {
     "./utils/**/*.{js,jsx,ts,tsx}",
     "./constants/**/*.{js,jsx,ts,tsx}",
     "./lib/**/*.{js,jsx,ts,tsx}",
+    "./assets/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
     extend: {
