@@ -1,11 +1,7 @@
-// /app/data/api.ts
-// This file centralizes all API calls for the application.
 
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
-/**
- * Generic API request helper to handle JSON and common headers.
- */
+// Generic API request helper to handle JSON and common headers.
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const config = {
         ...options,
@@ -17,10 +13,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     try {
         const response = await fetch(`${BASE_URL}${endpoint}`, config);
-        const data = await response.json();
+
+        const isJson = response.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await response.json() : null;
 
         if (!response.ok) {
-            throw new Error(data.message || 'Something went wrong');
+            throw new Error(data?.message || `Error: ${response.status}`);
         }
 
         return data as T;
@@ -30,9 +28,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
 }
 
-/**
- * Authentication related API calls.
- */
+// Auth apis
 export const auth = {
     register: (userData: any) => {
         return request('/auth/register', {
@@ -47,10 +43,26 @@ export const auth = {
             body: JSON.stringify(credentials),
         });
     },
+
+    requestOtp: (email: string) => {
+        return request('/api/auth/send-otp', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    },
+
+    verifyOtp: (email: string, otp: string) => {
+        return request('/auth/verify-otp', {
+            method: 'POST',
+            body: JSON.stringify({ email, otp }),
+        });
+    },
 };
 
-/**
- * Export other API modules here as they are created.
- * Example:
- * export const jobs = { ... };
- */
+// complete profile
+export const completeProfile = (userData: any) => {
+    return request('/auth/complete-profile', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+    });
+};

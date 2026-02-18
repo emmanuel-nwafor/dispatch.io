@@ -53,7 +53,6 @@ export default function Login() {
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
-            <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style={isDark ? "light" : "dark"} />
 
             <LinearGradient
