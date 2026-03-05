@@ -6,7 +6,7 @@ import React from 'react';
 import { Image, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Enhanced Mock Data (In a real app, fetch by ID)
+// Enhanced 
 type JobDetails = {
     id: string;
     title: string;
