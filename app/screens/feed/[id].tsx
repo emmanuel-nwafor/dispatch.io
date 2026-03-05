@@ -283,7 +283,7 @@ export default function JobDetailsScreen() {
                 }}
             >
                 <TouchableOpacity
-                    onPress={() => router.push('/screens/apply')}
+                    // onPress={() => router.push('/screens/apply')}
                     style={{ backgroundColor: theme.brand }}
                     className="w-full h-14 rounded-2xl items-center justify-center shadow-lg shadow-lime-500/20"
                 >
