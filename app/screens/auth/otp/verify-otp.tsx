@@ -1,8 +1,10 @@
 import { Colors } from '@/app/constants/Colors';
 import { toastConfig } from '@/app/utils/toastConfig';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { auth } from '@/app/data/api';
+import { storage } from '@/app/utils/storage';
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme, ActivityIndicator } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -12,6 +14,7 @@ import Toast from 'react-native-toast-message';
 
 export default function VerifyOtp() {
     const router = useRouter();
+    const { email } = useLocalSearchParams<{ email: string }>();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
@@ -50,15 +53,28 @@ export default function VerifyOtp() {
         }
     };
 
-    const handleResend = () => {
-        console.log("[OTP Flow]: User requested resend.");
-        setTimer(30);
-        setCanResend(false);
-        Toast.show({
-            type: 'success',
-            text1: 'Code Sent',
-            text2: 'A new verification code has been sent.',
-        });
+    const handleResend = async () => {
+        if (!email) return;
+
+        setIsLoading(true);
+        try {
+            await auth.sendOtp(email);
+            setTimer(60);
+            setCanResend(false);
+            Toast.show({
+                type: 'success',
+                text1: 'Code Sent',
+                text2: 'A new verification code has been sent.',
+            });
+        } catch (error: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Resend Failed',
+                text2: error.message || 'Could not resend code.'
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleVerify = async () => {
@@ -87,28 +103,46 @@ export default function VerifyOtp() {
         }
 
         setIsLoading(true);
-        console.log("[OTP Flow]: Verifying code:", fullOtp);
 
         try {
-            // Simulated API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            if (!email) throw new Error('Email is missing');
+
+            const response = await auth.verifyOtp(email, fullOtp);
+
+            // 1. Save Token and User Data
+            await storage.saveToken(response.token);
+            await storage.saveUser(response.user);
 
             Toast.show({
                 type: 'success',
                 text1: 'Verified',
-                text2: 'Your account has been verified!',
+                text2: 'Authentication successful!',
             });
 
+            // 2. Role-Based Redirection
             setTimeout(() => {
-                router.replace('/screens/(home)');
-            }, 1500);
+                if (response.isNewUser) {
+                    // Start fresh: pick a role
+                    router.replace('/screens/auth/role/role-select');
+                } else if (!response.user.isProfileCompleted) {
+                    // Role picked, but profile not finished
+                    router.replace('/screens/complete-profile');
+                } else {
+                    // Fully onboarded: go to dashboard
+                    if (response.user.role === 'recruiter') {
+                        router.replace('/screens/(recruiters)');
+                    } else {
+                        router.replace('/screens/(home)');
+                    }
+                }
+            }, 1000);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("[OTP Error]: Verification failed", error);
             Toast.show({
                 type: 'error',
-                text1: 'Verification Error',
-                text2: 'Something went wrong. Please try again.',
+                text1: 'Verification Failed',
+                text2: error.message || 'Invalid code or something went wrong.',
             });
         } finally {
             setIsLoading(false);

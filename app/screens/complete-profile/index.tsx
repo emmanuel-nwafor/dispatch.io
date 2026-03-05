@@ -21,6 +21,9 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import { Colors } from '@/app/constants/Colors';
 import LocationModal from '@/components/modals/LocationModal';
 import CompleteProfileHeader from '@/components/profile/CompleteProfileHeader';
+import { profile } from '@/app/data/api';
+import { useUserStore } from '@/hooks/useUserStore';
+import { storage } from '@/app/utils/storage';
 
 // Modular Steps
 import IdentityStep from './steps/IdentityStep';
@@ -64,6 +67,8 @@ export default function ProfileScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
+
+    const storeRole = useUserStore((state) => state.role);
 
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
@@ -116,16 +121,56 @@ export default function ProfileScreen() {
 
     const submitProfile = async () => {
         setLoading(true);
-        setTimeout(async () => {
+        try {
+            const mappedRole = storeRole === 'employer' ? 'recruiter' : 'seeker';
+
+            const payload = {
+                role: mappedRole,
+                fullName: formData.fullName,
+                phone: formData.location.state + " " + formData.location.country, // Just a placeholder if phone not in form
+                bio: formData.bio,
+                location: `${formData.location.state}, ${formData.location.country}`,
+                skills: formData.skills,
+                experienceYear: formData.experience.length, // Placeholder logic
+                education: formData.education.length > 0 ? formData.education[0]?.degree : '',
+                preferredJobTypes: formData.category ? [formData.category] : [],
+                // Recruiter specific
+                companyName: formData.fullName,
+                industry: formData.industry,
+                companySize: '1-10', // Default
+                companyLocation: `${formData.location.state}, ${formData.location.country}`
+            };
+
+            const response = await profile.complete(payload);
+
+            // Update saved user data
+            await storage.saveUser(response.user);
+
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            setLoading(false);
+
             Toast.show({
                 type: 'success',
                 text1: 'Profile Complete!',
                 text2: 'Redirecting you to home...',
             });
-            router.replace('/screens/(home)');
-        }, 2500);
+
+            setTimeout(() => {
+                if (mappedRole === 'recruiter') {
+                    router.replace('/screens/(recruiters)');
+                } else {
+                    router.replace('/screens/(home)');
+                }
+            }, 1000);
+
+        } catch (error: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Submission Failed',
+                text2: error.message || 'Could not complete profile. Please try again.'
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const inputStyle = {

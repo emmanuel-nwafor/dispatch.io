@@ -51,7 +51,7 @@ export default function Index() {
         ]),
         Animated.delay(1500),
       ]).start(() => {
-        router.replace('/screens/(home)' as any);
+        router.replace('/screens/auth/login');
       });
     }
   }, [fontsLoaded]);

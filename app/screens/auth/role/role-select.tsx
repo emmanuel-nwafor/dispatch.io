@@ -21,7 +21,7 @@ export default function RoleSelectScreen() {
 
     const handleContinue = () => {
         if (selectedRole) {
-            router.push('/screens/auth/signup/email');
+            router.replace('/screens/complete-profile');
         }
     };
 

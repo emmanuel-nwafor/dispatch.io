@@ -2,12 +2,14 @@ import { Colors } from '@/app/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import { auth } from '@/app/data/api';
+import { ActivityIndicator } from 'react-native';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { useState } from 'react';
 
 export default function Login() {
     const router = useRouter();
@@ -16,8 +18,9 @@ export default function Login() {
     const isDark = colorScheme === 'dark';
 
     const [email, setEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         // Check for empty input
         if (!email.trim()) {
             Toast.show({
@@ -39,16 +42,30 @@ export default function Login() {
             return;
         }
 
-        // Success
-        Toast.show({
-            type: 'success',
-            text1: 'Welcome Back',
-            text2: 'Sending your secure login code...'
-        });
+        setIsLoading(true);
 
-        setTimeout(() => {
-            router.push('/screens/auth/otp/verify-otp');
-        }, 1200);
+        try {
+            await auth.sendOtp(email.toLowerCase());
+
+            Toast.show({
+                type: 'success',
+                text1: 'Code Sent',
+                text2: 'Please check your email for the secure login code.'
+            });
+
+            router.push({
+                pathname: '/screens/auth/otp/verify-otp',
+                params: { email: email.toLowerCase() }
+            });
+        } catch (error: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Login Failed',
+                text2: error.message || 'Something went wrong. Please try again.'
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -109,13 +126,18 @@ export default function Login() {
                                 style={{ backgroundColor: isDark ? theme.brand : '#000000' }}
                                 className="py-4 rounded-2xl items-center mt-4"
                                 onPress={handleLogin}
+                                disabled={isLoading}
                             >
-                                <Text
-                                    style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#000000' : '#FFFFFF' }}
-                                    className="text-lg"
-                                >
-                                    Continue with Email
-                                </Text>
+                                {isLoading ? (
+                                    <ActivityIndicator size="small" color={isDark ? "#000000" : "#FFFFFF"} />
+                                ) : (
+                                    <Text
+                                        style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#000000' : '#FFFFFF' }}
+                                        className="text-lg"
+                                    >
+                                        Continue with Email
+                                    </Text>
+                                )}
                             </TouchableOpacity>
                         </View>
 

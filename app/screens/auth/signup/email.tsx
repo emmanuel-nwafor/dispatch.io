@@ -2,6 +2,7 @@ import { Colors } from '@/app/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { auth } from '@/app/data/api';
 import React, { useState } from 'react';
 import {
     Image,
@@ -51,14 +52,28 @@ export default function SignupUserInputEmail() {
 
         setIsLoading(true);
 
-        // Simulate a small check (e.g., checking if email exists)
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            const response = await auth.sendOtp(email.toLowerCase());
+
+            Toast.show({
+                type: 'success',
+                text1: 'OTP Sent',
+                text2: response.message || 'Check your email for the verification code.'
+            });
+
             router.push({
-                pathname: '/screens/auth/signup/password',
+                pathname: '/screens/auth/otp/verify-otp',
                 params: { email: email.toLowerCase() }
             });
-        }, 800);
+        } catch (error: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Request Failed',
+                text2: error.message || 'Could not send OTP. Please try again later.'
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
