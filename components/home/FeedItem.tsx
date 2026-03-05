@@ -70,7 +70,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
 
     const handleShareSelect = (option: string) => {
         console.log('Action selected:', option, 'for item:', item.id);
-        // Logic for specific options (copy, quote, etc.) would go here
     };
 
     const toggleShareModal = () => {
@@ -125,7 +124,8 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
     return (
         <TouchableOpacity
             activeOpacity={1}
-            onPress={onPress}
+            // onPress={onPress}
+            onPress={() => router.push("/screens/feed/[id]")}
             style={[styles.tweetContainer, { borderBottomColor: isDark ? '#2f3336' : '#eff3f4' }]}
         >
             <View className="flex-row px-4 py-4">
@@ -133,7 +133,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
                 <TouchableOpacity
                     onPress={() => router.push({
                         pathname: "/screens/profile/[id]" as any,
-                        // params: { id: company.id }
                     })}
                 >
                     <View className="mr-3">

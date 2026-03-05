@@ -37,7 +37,7 @@ export default function UsersHomeScreen() {
 
     const [filterVisible, setFilterVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [isLoadingFeed, setIsLoadingFeed] = useState(true); // Loading only the feed
+    const [isLoadingFeed, setIsLoadingFeed] = useState(true);
     const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('forYou');
     const [searchQuery, setSearchQuery] = useState('');
 
