@@ -19,12 +19,8 @@ export const storage = {
 
     getToken: async () => {
         try {
-            // ==========================================
-            // TEMPORARY TOKEN INJECT FOR TESTING
-            // Remove this block once email OTP is fixed.
-            const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY1ZmE0YjkzYThlOWQzYjEyMzQ1Njc4OSIsInJvbGUiOiJjYW5kaWRhdGUiLCJpYXQiOjE3NzM1MDg3ODYsImV4cCI6MTc3NjEwMDc4Nn0.ZUZRAl9ZEqJ9XUxUP9fWO2SQxUbitb0xW7x-m1lc9Ek";
+            const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5OTRhNmQ5NTgxYzcyZDlkYTlmOGYzYiIsInJvbGUiOiJzZWVrZXIiLCJpYXQiOjE3NzM1MTAwOTgsImV4cCI6MTc3NjEwMjA5OH0.HYF2T8q2eMk6lC7wv0xhuXJ8hSpzgicbqgkWm7YYqXo";
             return testToken;
-            // ==========================================
         } catch (error) {
             console.error('Error getting token:', error);
             return null;

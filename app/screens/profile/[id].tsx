@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,7 +7,8 @@ import {
     TouchableOpacity,
     StyleSheet,
     Platform,
-    Dimensions
+    Dimensions,
+    ActivityIndicator
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ import {
 } from 'react-native-responsive-screen';
 import { StatusBar } from 'expo-status-bar';
 import FeedItem from '@/components/home/FeedItem';
+import { profile as profileApi } from '@/app/data/api';
 
 const { width } = Dimensions.get('window');
 
@@ -28,98 +30,76 @@ export default function ProfileDetailsScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
-    const [activeTab, setActiveTab] = useState('Posts');
+    const [activeTab, setActiveTab] = useState('About');
 
-    const profile = {
-        isCompany: true,
-        isHiring: true,
-        name: 'Airbnb',
-        verified: true,
-        handle: '@airbnb_official',
-        headline: 'Helping creators belong anywhere. Leading the revolution of flexible living and travel.',
-        logo: 'https://cdn-icons-png.flaticon.com/512/2111/2111320.png',
-        banner: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1000',
-        industry: 'Hospitality',
-        location: 'San Francisco, CA',
-        website: 'airbnb.com/careers',
-        joinedDate: 'Joined March 2008',
-        stats: {
-            followers: '1.2M',
-            following: '428',
-            openRoles: '14'
-        },
-        mutuals: ['Elon', 'Zuck', 'Dorsey'],
-        about: 'Airbnb is a mission-driven company focused on creating a world where anyone can belong anywhere. We are looking for designers, engineers, and dreamers.',
-        services: [
-            { id: 1, title: 'Luxury Stays', desc: 'Curated high-end homes', icon: 'diamond-outline' },
-            { id: 2, title: 'Online Experiences', desc: 'Interactive global activities', icon: 'videocam-outline' },
-        ],
-        jobs: [
-            { id: 1, role: 'Senior UX Designer', loc: 'Remote', pay: '$150k - $200k', tags: ['Design', 'Mobile'] },
-            { id: 2, role: 'Principal RN Engineer', loc: 'London, UK', pay: '$180k - $240k', tags: ['Engineering', 'React'] },
-        ],
-        posts: [
-            {
-                id: 1,
-                user: 'Airbnb',
-                handle: '@airbnb_official',
-                avatar: 'https://cdn-icons-png.flaticon.com/512/2111/2111320.png',
-                time: '2h',
-                type: 'post',
-                content: 'The future of work is remote. We just launched our "Live Anywhere" program for employees! 🏠✨',
-                stats: {
-                    comments: '230',
-                    reposts: '1.1K',
-                    likes: '14.2K',
-                },
-                attachments: [
-                    {
-                        type: 'image',
-                        url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000'
-                    }
-                ]
-            },
-            {
-                id: 2,
-                user: 'Airbnb',
-                handle: '@airbnb_official',
-                avatar: 'https://cdn-icons-png.flaticon.com/512/2111/2111320.png',
-                time: '2h',
-                type: 'post',
-                content: 'The future of work is remote. We just launched our "Live Anywhere" program for employees! 🏠✨',
-                stats: {
-                    comments: '230',
-                    reposts: '1.1K',
-                    likes: '14.2K',
-                },
-                attachments: [
-                    {
-                        type: 'image',
-                        url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000'
-                    }
-                ]
-            },
-            {
-                id: 3,
-                user: 'Airbnb',
-                handle: '@airbnb_official',
-                avatar: 'https://cdn-icons-png.flaticon.com/512/2111/2111320.png',
-                time: '2h',
-                type: 'post',
-                content: 'The future of work is remote. We just launched our "Live Anywhere" program for employees! 🏠✨',
-                stats: {
-                    comments: '230',
-                    reposts: '1.1K',
-                    likes: '14.2K',
-                },
-                attachments: [
-                    {
-                        type: 'image',
-                        url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000'
-                    }
-                ]
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            if (!id) return;
+            try {
+                setLoading(true);
+                const res = await profileApi.getUserProfile(id as string);
+                if (res.success) {
+                    setUser(res.user);
+                } else {
+                    setError('Failed to load profile');
+                }
+            } catch (err) {
+                console.error(err);
+                setError('An error occurred while loading the profile');
+            } finally {
+                setLoading(false);
             }
-        ]
+        };
+
+        fetchUser();
+    }, [id]);
+
+    if (loading) {
+        return (
+            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={theme.brand} />
+            </View>
+        );
+    }
+
+    if (error || !user) {
+        return (
+            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: theme.text, fontFamily: 'Outfit-Medium' }}>{error || 'Profile not found'}</Text>
+                <TouchableOpacity onPress={() => router.back()} className="mt-4 px-6 py-2 bg-zinc-800 rounded-full">
+                    <Text className="text-white" style={{ fontFamily: 'Outfit-Bold' }}>Go Back</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    // Map Backend User Data to UI Schema
+    const profile = {
+        isCompany: user.role === 'recruiter',
+        isHiring: user.role === 'recruiter', // Simplification for now
+        name: user.profile?.fullName || 'Anonymous User',
+        verified: user.isVerified || false,
+        handle: user.email ? `@${user.email.split('@')[0]}` : '@user',
+        headline: user.profile?.headline || (user.role === 'recruiter' ? 'Hiring at top companies' : 'Open to new opportunities'),
+        logo: user.profile?.profileImage || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
+        banner: user.profile?.bannerImage || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1000',
+        industry: user.profile?.industry || 'Technology',
+        location: user.profile?.location || 'Global',
+        website: user.profile?.website || '',
+        joinedDate: `Joined ${new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+        stats: {
+            followers: '0',
+            following: '0',
+            openRoles: '0'
+        },
+        about: user.profile?.bio || 'No biography provided yet.',
+        services: [], // Add logic later if users have services
+        jobs: [], // Add logic later to fetch recruiter jobs
+        posts: [] // Add logic later to fetch user posts
     };
 
     return (
@@ -154,7 +134,7 @@ export default function ProfileDetailsScreen() {
                         <Image source={{ uri: profile.banner }} className="w-full h-44" resizeMode="cover" />
                         <View className="px-4 flex-row justify-between items-end -mt-10">
                             <View className="p-1 rounded-3xl" style={{ backgroundColor: theme.background }}>
-                                <Image source={{ uri: profile.logo }} className="w-24 h-24 rounded-2xl bg-white" resizeMode="contain" />
+                                <Image source={{ uri: profile.logo }} className="w-24 h-24 rounded-2xl bg-zinc-800" resizeMode="cover" />
                             </View>
                             <TouchableOpacity
                                 className="px-6 py-2 rounded-full border-2 mb-2"
@@ -183,14 +163,18 @@ export default function ProfileDetailsScreen() {
                         </Text>
 
                         <View className="flex-row flex-wrap mt-3 gap-x-4 gap-y-1">
-                            <View className="flex-row items-center">
-                                <Ionicons name="location-outline" size={16} color="#71717a" />
-                                <Text className="text-zinc-500 ml-1" style={{ fontSize: wp('3.3%') }}>{profile.location}</Text>
-                            </View>
-                            <View className="flex-row items-center">
-                                <Ionicons name="link-outline" size={16} color={theme.brand} />
-                                <Text style={{ color: theme.brand, marginLeft: 1, fontSize: wp('3.3%') }}>{profile.website}</Text>
-                            </View>
+                            {profile.location && (
+                                <View className="flex-row items-center">
+                                    <Ionicons name="location-outline" size={16} color="#71717a" />
+                                    <Text className="text-zinc-500 ml-1" style={{ fontSize: wp('3.3%') }}>{profile.location}</Text>
+                                </View>
+                            )}
+                            {profile.website ? (
+                                <View className="flex-row items-center">
+                                    <Ionicons name="link-outline" size={16} color={theme.brand} />
+                                    <Text style={{ color: theme.brand, marginLeft: 1, fontSize: wp('3.3%') }}>{profile.website}</Text>
+                                </View>
+                            ) : null}
                             <View className="flex-row items-center">
                                 <Ionicons name="calendar-outline" size={16} color="#71717a" />
                                 <Text className="text-zinc-500 ml-1" style={{ fontSize: wp('3.3%') }}>{profile.joinedDate}</Text>
@@ -230,61 +214,43 @@ export default function ProfileDetailsScreen() {
                     {activeTab === 'About' && (
                         <View className="px-4 py-6">
                             <View className="mb-6">
-                                <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4.5%'), color: theme.text }} className="mb-2">Bio</Text>
+                                <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4.5%'), color: theme.text }} className="mb-2">About</Text>
                                 <Text style={{ fontFamily: 'Outfit-Regular', color: isDark ? '#a1a1aa' : '#4b5563', lineHeight: 22 }}>{profile.about}</Text>
                             </View>
 
-                            <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4.5%'), color: theme.text }} className="mb-4">Services</Text>
-                            {profile.services.map(s => (
-                                <View key={s.id} className="flex-row items-center p-4 rounded-2xl mb-3 border"
-                                    style={{ borderColor: isDark ? '#2f3336' : '#eff3f4' }}>
-                                    <View className="w-10 h-10 rounded-xl bg-zinc-100 items-center justify-center mr-4">
-                                        <Ionicons name={s.icon as any} size={20} color="#000" />
-                                    </View>
-                                    <View>
-                                        <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{s.title}</Text>
-                                        <Text className="text-zinc-500 text-xs">{s.desc}</Text>
+                            {/* Skills Section for candidates */}
+                            {user.profile?.skills && user.profile.skills.length > 0 && (
+                                <View className="mb-6">
+                                    <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4.5%'), color: theme.text }} className="mb-3">Skills</Text>
+                                    <View className="flex-row flex-wrap gap-2">
+                                        {user.profile.skills.map((skill: string) => (
+                                            <View key={skill} className="px-3 py-1.5 rounded-full border"
+                                                style={{ borderColor: isDark ? '#2f3336' : '#eff3f4', backgroundColor: isDark ? '#16181c' : '#f9fafb' }}>
+                                                <Text style={{ color: theme.text, fontFamily: 'Outfit-Medium' }}>{skill}</Text>
+                                            </View>
+                                        ))}
                                     </View>
                                 </View>
-                            ))}
+                            )}
+
                         </View>
                     )}
 
                     {activeTab === 'Jobs' && (
                         <View className="px-4 py-6">
-                            <View className="flex-row justify-between items-center mb-4">
-                                <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4.5%'), color: theme.text }}>{profile.stats.openRoles} Open Roles</Text>
-                                <Ionicons name="options-outline" size={20} color={theme.text} />
-                            </View>
-                            {profile.jobs.map(job => (
-                                <TouchableOpacity key={job.id} className="p-4 rounded-3xl mb-3 border"
-                                    style={{ backgroundColor: isDark ? '#16181c' : '#fff', borderColor: isDark ? '#2f3336' : '#eff3f4' }}>
-                                    <View className="flex-row justify-between">
-                                        <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4%'), color: theme.text }}>{job.role}</Text>
-                                        <Text style={{ color: theme.brand, fontFamily: 'Outfit-Bold' }}>{job.pay}</Text>
-                                    </View>
-                                    <Text className="text-zinc-500 mt-1">{job.loc} • Full-time</Text>
-                                    <View className="flex-row mt-3 gap-2">
-                                        {job.tags.map(t => (
-                                            <View key={t} className="px-3 py-1 rounded-full bg-zinc-100">
-                                                <Text className="text-zinc-600 text-[10px]" style={{ fontFamily: 'Outfit-Bold' }}>{t.toUpperCase()}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
+                            <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Medium', textAlign: 'center', marginTop: 20 }}>No jobs to display yet.</Text>
                         </View>
                     )}
 
                     {activeTab === 'Posts' && (
-                        <View>
-                            {profile.posts.map((post) => (
-                                <FeedItem
-                                    key={post.id}
-                                    item={post as any}
-                                    onPress={() => console.log('Post pressed', post.id)}
-                                />
-                            ))}
+                        <View className="px-4 py-6">
+                            <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Medium', textAlign: 'center', marginTop: 20 }}>No posts to display yet.</Text>
+                        </View>
+                    )}
+
+                    {activeTab === 'Media' && (
+                        <View className="px-4 py-6">
+                            <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Medium', textAlign: 'center', marginTop: 20 }}>No media to display yet.</Text>
                         </View>
                     )}
                 </View>

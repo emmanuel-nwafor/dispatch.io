@@ -1,15 +1,27 @@
-import { Colors } from '@/app/constants/Colors';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    Image,
+    useColorScheme,
+    ActivityIndicator
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { auth } from '@/app/data/api';
-import { ActivityIndicator } from 'react-native';
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useState } from 'react';
+
+import { Colors } from '@/app/constants/Colors';
+import { auth } from '@/app/data/api';
+import { storage } from '@/app/utils/storage';
+import SuccessModal from '@/components/modals/SuccessModal';
+// Import your SuccessModal component here
 
 export default function Login() {
     const router = useRouter();
@@ -18,26 +30,17 @@ export default function Login() {
     const isDark = colorScheme === 'dark';
 
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
 
     const handleLogin = async () => {
-        // Check for empty input
-        if (!email.trim()) {
+        if (!email.trim() || !password.trim()) {
             Toast.show({
                 type: 'error',
-                text1: 'Email Required',
-                text2: 'Please enter your email to continue'
-            });
-            return;
-        }
-
-        // Regex Validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            Toast.show({
-                type: 'error',
-                text1: 'Invalid Format',
-                text2: 'Please enter a valid email address (e.g. name@job.com)'
+                text1: 'Missing Fields',
+                text2: 'Please enter both email and password'
             });
             return;
         }
@@ -45,27 +48,30 @@ export default function Login() {
         setIsLoading(true);
 
         try {
-            await auth.sendOtp(email.toLowerCase());
+            const response = await auth.login(email.toLowerCase().trim(), password);
 
-            Toast.show({
-                type: 'success',
-                text1: 'Code Sent',
-                text2: 'Please check your email for the secure login code.'
-            });
+            if (response.success) {
+                await storage.saveToken(response.token);
+                await storage.saveUser(response.user);
 
-            router.push({
-                pathname: '/screens/auth/otp/verify-otp',
-                params: { email: email.toLowerCase() }
-            });
+                // Instead of immediate replace, show the modal
+                setModalVisible(true);
+            }
         } catch (error: any) {
             Toast.show({
                 type: 'error',
                 text1: 'Login Failed',
-                text2: error.message || 'Something went wrong. Please try again.'
+                text2: error.message || 'Invalid credentials'
             });
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleModalClose = () => {
+        setModalVisible(false);
+        // Navigate after the modal has closed
+        router.replace('/screens/(home)');
     };
 
     return (
@@ -83,7 +89,6 @@ export default function Login() {
                 <KeyboardAwareScrollView
                     contentContainerStyle={{ flexGrow: 1, paddingHorizontal: wp('6%') }}
                     enableOnAndroid={true}
-                    extraScrollHeight={20}
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={{ marginTop: hp('5%'), flex: 1 }}>
@@ -105,10 +110,10 @@ export default function Login() {
                             Sign in to continue your career journey.
                         </Text>
 
-                        <View style={{ marginTop: hp('6%') }}>
+                        <View style={{ marginTop: hp('4%') }}>
                             <View
                                 style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="p-3 rounded-2xl border border-zinc-800/10"
+                                className="p-2.5 px-4 rounded-xl border border-zinc-800/10 mb-3"
                             >
                                 <TextInput
                                     placeholder="Email Address"
@@ -117,31 +122,52 @@ export default function Login() {
                                     placeholderTextColor={isDark ? '#52525b' : '#a1a1aa'}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
-                                    autoCorrect={false}
-                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: 16 }}
+                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: 15 }}
                                 />
+                            </View>
+
+                            <View
+                                style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
+                                className="p-2.5 px-4 rounded-xl border border-zinc-800/10 flex-row items-center"
+                            >
+                                <TextInput
+                                    placeholder="Password"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    placeholderTextColor={isDark ? '#52525b' : '#a1a1aa'}
+                                    secureTextEntry={!isPasswordVisible}
+                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: 15, flex: 1 }}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                                    className="ml-2"
+                                >
+                                    <Text style={{ fontFamily: 'Outfit-Bold', color: theme.brand, fontSize: 12 }}>
+                                        {isPasswordVisible ? "HIDE" : "SHOW"}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
 
                             <TouchableOpacity
                                 style={{ backgroundColor: isDark ? theme.brand : '#000000' }}
-                                className="py-4 rounded-2xl items-center mt-4"
+                                className="py-3.5 rounded-xl items-center mt-6"
                                 onPress={handleLogin}
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
-                                    <ActivityIndicator size="small" color={isDark ? "#000000" : "#FFFFFF"} />
+                                    <ActivityIndicator size="small" color="#006400" />
                                 ) : (
                                     <Text
                                         style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#000000' : '#FFFFFF' }}
                                         className="text-lg"
                                     >
-                                        Continue with Email
+                                        Login
                                     </Text>
                                 )}
                             </TouchableOpacity>
                         </View>
 
-                        <View className="flex-row items-center my-10">
+                        <View className="flex-row items-center my-8">
                             <View className="flex-1 h-[1px] bg-zinc-800/30" />
                             <Text style={{ fontFamily: 'Outfit-Medium' }} className="mx-4 text-zinc-500">or</Text>
                             <View className="flex-1 h-[1px] bg-zinc-800/30" />
@@ -150,15 +176,13 @@ export default function Login() {
                         <View className="flex-row justify-between space-x-4">
                             <TouchableOpacity
                                 style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="flex-1 py-4 rounded-2xl border border-zinc-800/10 items-center justify-center"
-                                onPress={() => Toast.show({ type: 'info', text1: 'Coming Soon', text2: 'Google login is currently being set up.' })}
+                                className="flex-1 py-3.5 rounded-xl border border-zinc-800/10 items-center justify-center"
                             >
                                 <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>Google</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="flex-1 py-4 rounded-2xl border border-zinc-800/10 items-center justify-center"
-                                onPress={() => Toast.show({ type: 'info', text1: 'Coming Soon', text2: 'Apple login is currently being set up.' })}
+                                className="flex-1 py-3.5 rounded-xl border border-zinc-800/10 items-center justify-center"
                             >
                                 <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>Apple</Text>
                             </TouchableOpacity>
@@ -174,6 +198,14 @@ export default function Login() {
                     </View>
                 </KeyboardAwareScrollView>
             </SafeAreaView>
+
+            {/* Success Modal Integration */}
+            <SuccessModal
+                visible={modalVisible}
+                onClose={handleModalClose}
+                title="Welcome Back!"
+                message="You have successfully logged into your account."
+            />
         </View>
     );
 }

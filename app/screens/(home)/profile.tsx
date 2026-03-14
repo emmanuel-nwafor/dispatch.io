@@ -2,7 +2,7 @@ import { Colors } from '@/app/constants/Colors';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Image,
     ScrollView,
@@ -11,12 +11,15 @@ import {
     View,
     useColorScheme,
     Platform,
+    ActivityIndicator
 } from 'react-native';
 import {
     heightPercentageToDP as hp,
     widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { auth as authApi } from '@/app/data/api';
+import { storage } from '@/app/utils/storage';
 
 interface MenuItemProps {
     icon: string;
@@ -75,11 +78,60 @@ export default function ProfileScreen() {
     const isDark = colorScheme === 'dark';
     const router = useRouter();
 
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMe = async () => {
+            try {
+                const res = await authApi.getMe();
+                if (res.success) {
+                    setUser(res.user);
+                }
+            } catch (err) {
+                console.error("Failed to fetch user profile", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMe();
+    }, []);
+
+    const handleLogout = async () => {
+        await storage.clearAll();
+        router.replace('/screens/auth/login' as any);
+    };
+
+    if (loading) {
+        return (
+            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={theme.brand} />
+            </View>
+        );
+    }
+
+    if (!user) {
+        return (
+            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: theme.text, fontFamily: 'Outfit-Medium' }}>Failed to load profile.</Text>
+                <TouchableOpacity onPress={() => router.replace('/screens/auth/login' as any)} className="mt-4 px-6 py-2 bg-zinc-800 rounded-full">
+                    <Text className="text-white" style={{ fontFamily: 'Outfit-Bold' }}>Log In Again</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
     const stats = [
-        { label: 'Applied', value: '24', icon: 'send-outline', color: theme.brand },
-        { label: 'Matches', value: '12', icon: 'sparkles-outline', color: '#3b82f6' },
-        { label: 'Views', value: '45', icon: 'eye-outline', color: '#8b5cf6' },
+        { label: 'Applied', value: '0', icon: 'send-outline', color: theme.brand },
+        { label: 'Matches', value: '0', icon: 'sparkles-outline', color: '#3b82f6' },
+        { label: 'Views', value: '0', icon: 'eye-outline', color: '#8b5cf6' },
     ];
+
+    const fullName = user.profile?.fullName || 'Anonymous User';
+    const headline = user.profile?.headline || (user.role === 'recruiter' ? 'Recruiter' : 'Job Seeker');
+    const location = user.profile?.location ? ` • ${user.profile.location}` : '';
+    const avatar = user.profile?.profileImage || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -88,10 +140,16 @@ export default function ProfileScreen() {
             <SafeAreaView style={{ flex: 1 }} edges={['top']}>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} className='mb-20'>
                     {/* Header */}
-                    <View style={{ paddingHorizontal: 24, paddingTop: 10, marginBottom: 30 }}>
+                    <View style={{ paddingHorizontal: 24, paddingTop: 10, marginBottom: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 28 }}>
                             Profile
                         </Text>
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: '/screens/profile/[id]', params: { id: user.id } } as any)}
+                            style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: theme.brand, borderRadius: 20 }}
+                        >
+                            <Text style={{ fontFamily: 'Outfit-Bold', color: '#fff', fontSize: 13 }}>View Public</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Hero Section */}
@@ -107,7 +165,7 @@ export default function ProfileScreen() {
                                 backgroundColor: theme.background,
                             }}>
                                 <Image
-                                    source={{ uri: 'https://i.pravatar.cc/300' }}
+                                    source={{ uri: avatar }}
                                     style={{ width: '100%', height: '100%', borderRadius: 50 }}
                                 />
                             </View>
@@ -129,10 +187,10 @@ export default function ProfileScreen() {
                         </TouchableOpacity>
 
                         <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 24, marginBottom: 4 }}>
-                            Emmanuel Nwafor
+                            {fullName}
                         </Text>
                         <Text style={{ fontFamily: 'Outfit-Medium', color: '#71717a', fontSize: 14 }}>
-                            Senior UI/UX Engineer • London, UK
+                            {headline}{location}
                         </Text>
                     </View>
 
@@ -245,7 +303,7 @@ export default function ProfileScreen() {
                                 label="Log Out"
                                 isDestructive
                                 isLast
-                                onPress={() => router.replace('/screens/auth/login' as any)}
+                                onPress={handleLogout}
                             />
                         </View>
                     </View>
