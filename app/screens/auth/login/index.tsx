@@ -15,13 +15,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 
 import { Colors } from '@/app/constants/Colors';
 import { auth } from '@/app/data/api';
 import { storage } from '@/app/utils/storage';
-import SuccessModal from '@/components/modals/SuccessModal';
-// Import your SuccessModal component here
 
 export default function Login() {
     const router = useRouter();
@@ -54,8 +53,16 @@ export default function Login() {
                 await storage.saveToken(response.token);
                 await storage.saveUser(response.user);
 
-                // Instead of immediate replace, show the modal
+                // Trigger the Modal instead of immediate navigation
                 setModalVisible(true);
+
+                Toast.show({
+                    type: 'success',
+                    text1: 'Login Successful',
+                    text2: 'Welcome back to dispatch.io!'
+                });
+
+                router.replace('/screens/(home)');
             }
         } catch (error: any) {
             Toast.show({
@@ -66,12 +73,6 @@ export default function Login() {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleModalClose = () => {
-        setModalVisible(false);
-        // Navigate after the modal has closed
-        router.replace('/screens/(home)');
     };
 
     return (
@@ -92,6 +93,7 @@ export default function Login() {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={{ marginTop: hp('5%'), flex: 1 }}>
+                        {/* Header Section */}
                         <View className="flex-row items-center mb-2">
                             <Image
                                 source={require('@/assets/images/logo.png')}
@@ -110,6 +112,7 @@ export default function Login() {
                             Sign in to continue your career journey.
                         </Text>
 
+                        {/* Form Section */}
                         <View style={{ marginTop: hp('4%') }}>
                             <View
                                 style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
@@ -142,9 +145,11 @@ export default function Login() {
                                     onPress={() => setIsPasswordVisible(!isPasswordVisible)}
                                     className="ml-2"
                                 >
-                                    <Text style={{ fontFamily: 'Outfit-Bold', color: theme.brand, fontSize: 12 }}>
-                                        {isPasswordVisible ? "HIDE" : "SHOW"}
-                                    </Text>
+                                    <Ionicons
+                                        name={isPasswordVisible ? "eye-outline" : "eye-off-outline"}
+                                        size={20}
+                                        color={isDark ? '#a1a1aa' : '#6b7280'}
+                                    />
                                 </TouchableOpacity>
                             </View>
 
@@ -167,12 +172,14 @@ export default function Login() {
                             </TouchableOpacity>
                         </View>
 
+                        {/* Divider */}
                         <View className="flex-row items-center my-8">
                             <View className="flex-1 h-[1px] bg-zinc-800/30" />
                             <Text style={{ fontFamily: 'Outfit-Medium' }} className="mx-4 text-zinc-500">or</Text>
                             <View className="flex-1 h-[1px] bg-zinc-800/30" />
                         </View>
 
+                        {/* Social Login */}
                         <View className="flex-row justify-between space-x-4">
                             <TouchableOpacity
                                 style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
@@ -189,6 +196,7 @@ export default function Login() {
                         </View>
                     </View>
 
+                    {/* Footer */}
                     <View style={{ marginBottom: hp('4%'), marginTop: 20 }} className="items-center">
                         <TouchableOpacity onPress={() => router.push('/screens/auth/signup/email')}>
                             <Text style={{ fontFamily: 'Outfit-Medium', color: isDark ? '#a1a1aa' : '#6b7280' }}>
@@ -198,14 +206,6 @@ export default function Login() {
                     </View>
                 </KeyboardAwareScrollView>
             </SafeAreaView>
-
-            {/* Success Modal Integration */}
-            <SuccessModal
-                visible={modalVisible}
-                onClose={handleModalClose}
-                title="Welcome Back!"
-                message="You have successfully logged into your account."
-            />
         </View>
     );
 }
