@@ -37,7 +37,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const auth = {
     // OTP Generation
     sendOtp: (email: string) => {
-        return request<{ success: boolean; message: string }>('/v1/auth/send-otp', {
+        return request<{ success: boolean; message: string }>('/auth/send-otp', {
             method: 'POST',
             body: JSON.stringify({ email }),
         });

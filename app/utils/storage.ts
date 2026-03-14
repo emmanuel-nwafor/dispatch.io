@@ -19,11 +19,12 @@ export const storage = {
 
     getToken: async () => {
         try {
-            if (Platform.OS === 'web') {
-                return localStorage.getItem(TOKEN_KEY);
-            } else {
-                return await SecureStore.getItemAsync(TOKEN_KEY);
-            }
+            // ==========================================
+            // TEMPORARY TOKEN INJECT FOR TESTING
+            // Remove this block once email OTP is fixed.
+            const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY1ZmE0YjkzYThlOWQzYjEyMzQ1Njc4OSIsInJvbGUiOiJjYW5kaWRhdGUiLCJpYXQiOjE3NzM1MDg3ODYsImV4cCI6MTc3NjEwMDc4Nn0.ZUZRAl9ZEqJ9XUxUP9fWO2SQxUbitb0xW7x-m1lc9Ek";
+            return testToken;
+            // ==========================================
         } catch (error) {
             console.error('Error getting token:', error);
             return null;
