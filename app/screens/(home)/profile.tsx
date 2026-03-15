@@ -20,13 +20,10 @@ import {
     heightPercentageToDP as hp,
     widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
-import { user as userApi, posts as postsApi, reels as reelsApi, jobs as jobsApi, User, Post, Reel, Job } from '@/app/data/api';
+import { user as userApi, User } from '@/app/data/api';
 import { storage } from '@/app/utils/storage';
 import Toast from 'react-native-toast-message';
 import { BlurView } from 'expo-blur';
-import ReelCard from '@/components/ReelCard';
-import FeedItem from '@/components/home/FeedItem';
-import JobCard from '@/components/JobCard';
 
 interface MenuItemProps {
     icon: string;
@@ -77,10 +74,6 @@ export default function SeekersProfileScreen() {
     const router = useRouter();
 
     const [user, setUser] = useState<User | null>(null);
-    const [userPosts, setUserPosts] = useState<Post[]>([]);
-    const [userReels, setUserReels] = useState<Reel[]>([]);
-    const [userJobs, setUserJobs] = useState<Job[]>([]);
-    const [activeTab, setActiveTab] = useState<'About' | 'Posts' | 'Media' | 'Jobs'>('About');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [uploading, setUploading] = useState<{ avatar: boolean; cover: boolean }>({ avatar: false, cover: false });
@@ -91,20 +84,6 @@ export default function SeekersProfileScreen() {
             const res = await userApi.getMe();
             if (res.success) {
                 setUser(res.user);
-
-                // Fetch user content
-                const [postsRes, reelsRes] = await Promise.all([
-                    postsApi.getByUser(res.user._id),
-                    reelsApi.getByUser(res.user._id)
-                ]);
-
-                if (postsRes.success) setUserPosts(postsRes.data);
-                if (reelsRes.success) setUserReels(reelsRes.data);
-
-                if (res.user.role === 'recruiter') {
-                    const jobsRes = await jobsApi.getAll({ recruiterId: res.user._id });
-                    if (jobsRes.success) setUserJobs(jobsRes.jobs);
-                }
             }
         } catch (err) {
             console.error("Profile Fetch Error:", err);
@@ -126,13 +105,16 @@ export default function SeekersProfileScreen() {
 
     const pickImage = async (type: 'avatar' | 'cover') => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') return;
+        if (status !== 'granted') {
+            Toast.show({ type: 'info', text1: 'Permission Denied', text2: 'We need access to your photos' });
+            return;
+        }
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             aspect: type === 'avatar' ? [1, 1] : [16, 9],
-            quality: 0.8,
+            quality: 0.7,
         });
 
         if (!result.canceled) {
@@ -144,9 +126,9 @@ export default function SeekersProfileScreen() {
         setUploading(prev => ({ ...prev, [type]: true }));
         try {
             const formData = new FormData();
-            const filename = uri.split('/').pop();
-            const match = /\.(\w+)$/.exec(filename || '');
-            const mimeType = match ? `image/${match[1]}` : `image`;
+            const filename = uri.split('/').pop() || 'upload.jpg';
+            const match = /\.(\w+)$/.exec(filename);
+            const mimeType = match ? `image/${match[1]}` : `image/jpeg`;
 
             formData.append('file', {
                 uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
@@ -154,15 +136,25 @@ export default function SeekersProfileScreen() {
                 type: mimeType,
             } as any);
 
+            formData.append('type', type === 'avatar' ? 'avatar' : 'coverImage');
+
             const res = await userApi.uploadImage(formData);
-            if (res.success && user) {
-                const updatedUser = { ...user };
+
+            if (res.success) {
+                const updatedUser = { ...user } as User;
                 if (type === 'avatar') updatedUser.avatar = res.imageUrl;
                 else updatedUser.coverImage = res.imageUrl;
+
                 setUser(updatedUser);
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Image updated successfully!' });
             }
         } catch (error: any) {
-            Toast.show({ type: 'error', text1: 'Upload Failed', text2: error.message });
+            console.error("Upload Error:", error);
+            Toast.show({
+                type: 'error',
+                text1: 'Upload Failed',
+                text2: error.message || 'Server error (500)'
+            });
         } finally {
             setUploading(prev => ({ ...prev, [type]: false }));
         }
@@ -174,7 +166,7 @@ export default function SeekersProfileScreen() {
     };
 
     const fullName = user?.profile?.fullName || 'Anonymous';
-    const avatar = user?.avatar || 'https://ui-avatars.com/api/?name=' + fullName.replace(' ', '+') + '&background=006400&color=fff';
+    const avatar = user?.avatar || `https://ui-avatars.com/api/?name=${fullName.replace(' ', '+')}&background=006400&color=fff`;
     const coverImage = user?.coverImage || 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1000';
 
     if (loading) {
@@ -205,7 +197,7 @@ export default function SeekersProfileScreen() {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: hp('10%') }}
+                contentContainerStyle={{ paddingBottom: hp('15%') }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
             >
                 {/* HERO SECTION */}
@@ -215,7 +207,11 @@ export default function SeekersProfileScreen() {
 
                     <TouchableOpacity onPress={() => pickImage('cover')} className="absolute" style={{ top: hp('16%'), right: 20 }}>
                         <BlurView intensity={50} tint="dark" className="w-10 h-10 rounded-full items-center justify-center overflow-hidden">
-                            <Ionicons name="camera" size={20} color="white" />
+                            {uploading.cover ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <Ionicons name="camera" size={20} color="white" />
+                            )}
                         </BlurView>
                     </TouchableOpacity>
 
@@ -224,7 +220,7 @@ export default function SeekersProfileScreen() {
                         <View className="relative">
                             <View
                                 style={[styles.avatarBorder, { borderColor: theme.background }]}
-                                className="w-32 h-32 rounded-full border-4 overflow-hidden shadow-2xl"
+                                className="w-32 h-32 rounded-full border-4 overflow-hidden shadow-2xl bg-zinc-800"
                             >
                                 <Image source={{ uri: avatar }} className="w-full h-full" />
                                 {uploading.avatar && (
@@ -250,81 +246,49 @@ export default function SeekersProfileScreen() {
                     </View>
                 </View>
 
-                {/* PROFILE TABS */}
-                <View
-                    style={{ backgroundColor: theme.background, borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
-                    className="flex-row px-6 mt-8"
-                >
-                    {['About', 'Posts', 'Media', ...(user?.role === 'recruiter' ? ['Jobs'] : [])].map((tab) => (
-                        <TouchableOpacity
-                            key={tab}
-                            onPress={() => setActiveTab(tab as any)}
-                            className="mr-6 py-4 relative"
+                {/* STATS BRIDGE */}
+                <View className="flex-row justify-between px-6 -mt-10">
+                    {[
+                        { label: 'Applied', value: user?.appliedJobsCount || 0, icon: 'send', color: '#006400' },
+                        { label: 'Match', value: (user?.profile?.autoApply?.minMatchScore || 0) + '%', icon: 'flash', color: '#006400' },
+                        { label: 'Exp', value: (user?.profile?.experienceYear || 0) + 'y', icon: 'medal', color: '#006400' },
+                    ].map((item, i) => (
+                        <View
+                            key={i}
+                            className="items-center py-5 rounded-3xl shadow-lg border"
+                            style={{
+                                width: wp('27%'),
+                                backgroundColor: isDark ? '#1a1a1a' : '#fff',
+                                borderColor: isDark ? '#222' : '#f0f0f0'
+                            }}
                         >
-                            <Text style={{
-                                fontFamily: activeTab === tab ? 'Outfit-Bold' : 'Outfit-Medium',
-                                color: activeTab === tab ? theme.brand : '#71717a',
-                                fontSize: 15
-                            }}>
-                                {tab}
-                            </Text>
-                            {activeTab === tab && (
-                                <View style={{ backgroundColor: theme.brand }} className="absolute bottom-0 left-0 right-0 h-1 rounded-full" />
-                            )}
-                        </TouchableOpacity>
+                            <Ionicons name={item.icon as any} size={20} color={item.color} />
+                            <Text className="text-lg mt-2" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{item.value}</Text>
+                            <Text className="text-zinc-400 text-[10px] uppercase tracking-wider font-medium">{item.label}</Text>
+                        </View>
                     ))}
                 </View>
 
-                {/* TAB CONTENT */}
-                <View className="px-6 py-8">
-                    {activeTab === 'About' ? (
-                        <View>
-                            <SectionLabel title="Account Management" />
-                            <View
-                                className="rounded-[35px] border overflow-hidden mb-8"
-                                style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
-                            >
-                                <MenuItem icon="person-outline" label="Personal Details" />
-                                <MenuItem icon="document-text-outline" label="Experience & Skills" />
-                                <MenuItem icon="settings-outline" label="Preferences" isLast />
-                            </View>
+                {/* MENU CONTENT */}
+                <View className="px-6 mt-10">
+                    <SectionLabel title="Account Management" />
+                    <View
+                        className="rounded-[35px] border overflow-hidden mb-8"
+                        style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
+                    >
+                        <MenuItem icon="person-outline" label="Personal Details" />
+                        <MenuItem icon="document-text-outline" label="Experience & Skills" />
+                        <MenuItem icon="settings-outline" label="Preferences" isLast />
+                    </View>
 
-                            <SectionLabel title="Support" />
-                            <View
-                                className="rounded-[35px] border overflow-hidden"
-                                style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
-                            >
-                                <MenuItem icon="help-circle-outline" label="Help Center" />
-                                <MenuItem icon="log-out-outline" label="Logout" isDestructive isLast onPress={handleLogout} />
-                            </View>
-                        </View>
-                    ) : activeTab === 'Posts' ? (
-                        <View className="gap-y-4">
-                            {userPosts.length > 0 ? (
-                                userPosts.map(post => (
-                                    <FeedItem key={post._id} item={{ ...post, type: 'post', user: fullName, handle: `@${user?.email.split('@')[0]}`, avatar: avatar, time: 'recently', stats: { likes: post.likes.length.toString(), comments: post.comments.length.toString(), reposts: '0' } } as any} />
-                                ))
-                            ) : (
-                                <Text className="text-zinc-500 text-center py-10" style={{ fontFamily: 'Outfit-Medium' }}>No posts to show.</Text>
-                            )}
-                        </View>
-                    ) : activeTab === 'Media' ? (
-                        <View className="flex-row flex-wrap justify-between">
-                            {userReels.length > 0 ? (
-                                userReels.map(reel => (
-                                    <ReelCard key={reel._id} reel={reel} onPress={() => router.push({ pathname: '/screens/reels/[id]', params: { id: reel._id } } as any)} />
-                                ))
-                            ) : (
-                                <Text className="text-zinc-500 text-center py-10 w-full" style={{ fontFamily: 'Outfit-Medium' }}>No media uploaded.</Text>
-                            )}
-                        </View>
-                    ) : (
-                        <View className="gap-y-4">
-                            {userJobs.map(job => (
-                                <JobCard key={job._id} job={job} />
-                            ))}
-                        </View>
-                    )}
+                    <SectionLabel title="Support" />
+                    <View
+                        className="rounded-[35px] border overflow-hidden"
+                        style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
+                    >
+                        <MenuItem icon="help-circle-outline" label="Help Center" />
+                        <MenuItem icon="log-out-outline" label="Logout" isDestructive isLast onPress={handleLogout} />
+                    </View>
                 </View>
             </ScrollView>
         </View>

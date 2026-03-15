@@ -22,6 +22,7 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 
 // API and Components
 import { user, User } from '@/app/data/api';
+import { storage } from '@/app/utils/storage'; // Added storage for logout
 import RecruiterProfileHeader from '@/components/recruiters/RecruiterProfileHeader';
 import RecruiterStats from '@/components/recruiters/RecruiterStats';
 import QuickActions from '@/components/recruiters/QuickActions';
@@ -43,9 +44,7 @@ export default function RecruitersHomeScreen() {
 
     const loadData = useCallback(async () => {
         try {
-            // LayoutAnimation for smooth state transitions
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-
             const response = await user.getMe();
             if (response.success) {
                 setUserData(response.user);
@@ -68,6 +67,12 @@ export default function RecruitersHomeScreen() {
         loadData();
     }, [loadData]);
 
+    const handleLogout = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        await storage.clearAll();
+        router.replace('/screens/auth/login');
+    };
+
     const activeJobs = [
         {
             id: 1,
@@ -85,47 +90,59 @@ export default function RecruitersHomeScreen() {
 
     if (isLoading && !refreshing) {
         return (
-            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+            <View className="flex-1 justify-center items-center" style={{ backgroundColor: theme.background }}>
                 <ActivityIndicator size="large" color="#006400" />
             </View>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <View className="flex-1" style={{ backgroundColor: theme.background }}>
             <StatusBar style={isDark ? "light" : "dark"} />
 
             <SafeAreaView className="flex-1" edges={['top']}>
+                {/* Header with Logout */}
+                <View className="px-6 py-4 flex-row justify-between items-center">
+                    <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('6%'), color: theme.text }}>
+                        Dashboard
+                    </Text>
+                    <TouchableOpacity
+                        onPress={handleLogout}
+                        activeOpacity={0.7}
+                        className="bg-red-50 dark:bg-red-900/10 p-2.5 rounded-2xl flex-row items-center border border-red-100 dark:border-red-900/20"
+                    >
+                        <Ionicons name="log-out-outline" size={wp('5%')} color="#ef4444" />
+                        <Text className="text-red-500 ml-2 text-[13px]" style={{ fontFamily: 'Outfit-Bold' }}>Logout</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <ScrollView
                     showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: hp('12%') }}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
                             tintColor={theme.brand}
+                            colors={[theme.brand]}
                         />
                     }
                 >
-                    {/* Dynamic Profile Header from API */}
                     <RecruiterProfileHeader
                         name={userData?.profile?.fullName || "Recruiter Name"}
                         headline={userData?.profile?.bio || "Talent Acquisition Specialist"}
                         location={userData?.profile?.location || "Global"}
                         avatarUrl={userData?.profile?.resumeUrl || "https://i.pravatar.cc/300?u=recruiter"}
-                        bannerUrl="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000"
+                        bannerUrl="https://images.unsplash.com/photo-1557683316-973673baf926?w=1000"
                         onEditPress={() => {
                             Haptics.selectionAsync();
                             router.push('/screens/profile/edit');
                         }}
                     />
 
-                    {/* Stats/Analytics Section */}
                     <RecruiterStats />
-
-                    {/* Quick Actions */}
                     <QuickActions />
 
-                    {/* Active Jobs Section */}
                     <View style={styles.sectionContainer}>
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Job Postings</Text>
@@ -144,8 +161,6 @@ export default function RecruitersHomeScreen() {
                             ))}
                         </View>
                     </View>
-
-                    <View style={{ height: hp('12%') }} />
                 </ScrollView>
             </SafeAreaView>
 
@@ -157,6 +172,7 @@ export default function RecruitersHomeScreen() {
                     router.push('/screens/create-post' as any);
                 }}
                 style={[styles.fab, { backgroundColor: theme.brand }]}
+                className="shadow-lg"
             >
                 <Ionicons name="add" size={wp('8%')} color={isDark ? "#000" : "#FFF"} />
             </TouchableOpacity>

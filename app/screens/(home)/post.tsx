@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Image,
     ScrollView,
     Text,
@@ -22,6 +23,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import { user as userApi, posts as postsApi, reels as reelsApi, User } from '@/app/data/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function PostScreen() {
     const colorScheme = useColorScheme() ?? 'light';
@@ -31,6 +34,18 @@ export default function PostScreen() {
 
     const [postContent, setPostContent] = useState('');
     const [selectedMedia, setSelectedMedia] = useState<ImagePicker.ImagePickerAsset[]>([]);
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            const fetchUser = async () => {
+                const res = await userApi.getMe();
+                if (res.success) setUser(res.user);
+            };
+            fetchUser();
+        }, [])
+    );
 
     const pickMedia = async (type: 'images' | 'video') => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -54,14 +69,71 @@ export default function PostScreen() {
         setSelectedMedia(updatedMedia);
     };
 
-    const handlePost = () => {
+    const handlePost = async () => {
         if (!postContent.trim() && selectedMedia.length === 0) {
             Alert.alert("Empty Post", "Please add some text or media to share.");
             return;
         }
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        console.log("Posting:", { postContent, selectedMedia });
-        router.back();
+
+        setLoading(true);
+        try {
+            const hasVideo = selectedMedia.some(m => m.type === 'video');
+            const formData = new FormData();
+
+            if (hasVideo) {
+                // Handle as Reel
+                const videoAsset = selectedMedia.find(m => m.type === 'video');
+                if (!videoAsset) throw new Error("Video asset not found");
+
+                formData.append('title', postContent.slice(0, 50) || 'New Reel');
+                formData.append('description', postContent);
+                formData.append('type', 'seeker_pitch'); // Default type
+
+                const filename = videoAsset.uri.split('/').pop() || 'reel.mp4';
+                const match = /\.(\w+)$/.exec(filename);
+                const fileType = match ? `video/${match[1]}` : `video/mp4`;
+
+                formData.append('postImage', {
+                    uri: Platform.OS === 'ios' ? videoAsset.uri.replace('file://', '') : videoAsset.uri,
+                    name: filename,
+                    type: fileType,
+                } as any);
+
+                const res = await reelsApi.create(formData);
+                if (res.success) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    Alert.alert("Success", "Reel uploaded successfully!");
+                    router.back();
+                }
+            } else {
+                // Handle as Post
+                formData.append('content', postContent);
+
+                selectedMedia.forEach((asset, index) => {
+                    const filename = asset.uri.split('/').pop() || `image_${index}.jpg`;
+                    const match = /\.(\w+)$/.exec(filename);
+                    const fileType = match ? `image/${match[1]}` : `image/jpeg`;
+
+                    formData.append('images', {
+                        uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+                        name: filename,
+                        type: fileType,
+                    } as any);
+                });
+
+                const res = await postsApi.create(formData);
+                if (res.success) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    Alert.alert("Success", "Post shared successfully!");
+                    router.back();
+                }
+            }
+        } catch (error: any) {
+            console.error("Posting Error:", error);
+            Alert.alert("Error", error.message || "Failed to share post. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -78,15 +150,20 @@ export default function PostScreen() {
 
                     <TouchableOpacity
                         onPress={handlePost}
-                        disabled={!postContent.trim() && selectedMedia.length === 0}
+                        disabled={(!postContent.trim() && selectedMedia.length === 0) || loading}
                         style={{
-                            backgroundColor: (postContent.trim() || selectedMedia.length > 0) ? theme.brand : '#71717a',
+                            backgroundColor: (postContent.trim() || selectedMedia.length > 0) && !loading ? theme.brand : '#71717a',
                             paddingHorizontal: 20,
                             paddingVertical: 8,
-                            borderRadius: 20
+                            borderRadius: 20,
+                            flexDirection: 'row',
+                            alignItems: 'center'
                         }}
                     >
-                        <Text style={{ fontFamily: 'Outfit-Bold', color: '#000' }}>Post</Text>
+                        {loading && <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />}
+                        <Text style={{ fontFamily: 'Outfit-Bold', color: '#000' }}>
+                            {loading ? 'Sharing...' : 'Post'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
@@ -98,12 +175,12 @@ export default function PostScreen() {
                         {/* User Identity Section */}
                         <View className="flex-row items-center mb-6">
                             <Image
-                                source={{ uri: 'https://i.pravatar.cc/100' }}
-                                style={{ width: 45, height: 45, borderRadius: 25, marginRight: 12 }}
+                                source={{ uri: user?.avatar || 'https://i.pravatar.cc/100' }}
+                                style={{ width: 45, height: 45, borderRadius: 25, marginRight: 12, backgroundColor: '#27272a' }}
                             />
                             <View>
                                 <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 16 }}>
-                                    Emmanuel Nwafor
+                                    {user?.profile?.fullName || 'Anonymous'}
                                 </Text>
                                 <TouchableOpacity className="flex-row items-center mt-1 border px-2 py-0.5 rounded-full"
                                     style={{ borderColor: '#71717a' }}>
