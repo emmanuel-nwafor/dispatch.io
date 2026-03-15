@@ -19,8 +19,10 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 // API & Components
-import { user as userApi, User } from '@/app/data/api';
+import { user as userApi, posts as postsApi, reels as reelsApi, jobs as jobsApi, User, Post, Reel, Job } from '@/app/data/api';
 import RecruiterProfileSkeleton from '@/components/skeletons/RecruiterProfileSkeleton';
+import FeedItem from '@/components/home/FeedItem';
+import JobCard from '@/components/JobCard';
 
 export default function ProfileDetailsScreen() {
     const { id } = useLocalSearchParams();
@@ -31,6 +33,9 @@ export default function ProfileDetailsScreen() {
     const isDark = colorScheme === 'dark';
     const [activeTab, setActiveTab] = useState('About');
     const [profileData, setProfileData] = useState<User | null>(null);
+    const [userPosts, setUserPosts] = useState<Post[]>([]);
+    const [userReels, setUserReels] = useState<Reel[]>([]);
+    const [userJobs, setUserJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState('');
@@ -40,10 +45,25 @@ export default function ProfileDetailsScreen() {
             if (isRefreshing) setRefreshing(true);
             else setLoading(true);
 
-            const res = await userApi.getMe();
+            const res = await userApi.getProfile(id as string);
 
             if (res.success) {
                 setProfileData(res.user);
+
+                // Fetch associated content
+                const [postsRes, reelsRes] = await Promise.all([
+                    postsApi.getByUser(id as string),
+                    reelsApi.getByUser(id as string)
+                ]);
+
+                if (postsRes.success) setUserPosts(postsRes.data);
+                if (reelsRes.success) setUserReels(reelsRes.data);
+
+                if (res.user.role === 'recruiter') {
+                    const jobsRes = await jobsApi.getAll({ recruiterId: id });
+                    if (jobsRes.success) setUserJobs(jobsRes.jobs);
+                }
+
                 setError('');
             } else {
                 setError('Failed to load profile');
@@ -228,6 +248,52 @@ export default function ProfileDetailsScreen() {
                                             </View>
                                         ))}
                                     </View>
+                                </View>
+                            )}
+                        </View>
+                    ) : activeTab === 'Posts' ? (
+                        <View className="gap-y-4">
+                            {userPosts.length > 0 ? (
+                                userPosts.map(post => (
+                                    <FeedItem key={post._id} item={{ ...post, type: 'post' } as any} />
+                                ))
+                            ) : (
+                                <View className="items-center mt-10">
+                                    <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>No posts yet.</Text>
+                                </View>
+                            )}
+                        </View>
+                    ) : activeTab === 'Media' ? (
+                        <View className="flex-row flex-wrap gap-2">
+                            {userReels.length > 0 ? (
+                                userReels.map(reel => (
+                                    <TouchableOpacity
+                                        key={reel._id}
+                                        style={{ width: (wp('100%') - 50) / 2, height: wp('60%') }}
+                                        className="rounded-2xl overflow-hidden bg-zinc-900"
+                                    >
+                                        <Image source={{ uri: reel.thumbnailUrl }} className="w-full h-full" resizeMode="cover" />
+                                        <View className="absolute bottom-3 left-3 flex-row items-center">
+                                            <Ionicons name="play" size={12} color="#fff" />
+                                            <Text className="text-white text-[10px] ml-1 font-bold">{reel.views || 0}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))
+                            ) : (
+                                <View className="items-center mt-10 w-full">
+                                    <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>No media found.</Text>
+                                </View>
+                            )}
+                        </View>
+                    ) : activeTab === 'Jobs' ? (
+                        <View className="gap-y-4">
+                            {userJobs.length > 0 ? (
+                                userJobs.map(job => (
+                                    <JobCard key={job._id} job={job} />
+                                ))
+                            ) : (
+                                <View className="items-center mt-10 w-full">
+                                    <Text className="text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>No jobs posted.</Text>
                                 </View>
                             )}
                         </View>

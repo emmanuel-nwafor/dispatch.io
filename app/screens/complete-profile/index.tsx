@@ -138,7 +138,7 @@ export default function CompleteProfileScreen() {
                 industry: formData.industry,
                 companySize: '1-10', // Default
                 companyLocation: `${formData.location.state}, ${formData.location.country}`,
-                profileImage: formData.profileImage,
+                avatar: formData.profileImage,
                 coverImage: formData.coverImage
             };
 

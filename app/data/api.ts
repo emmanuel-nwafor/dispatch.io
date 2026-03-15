@@ -36,6 +36,11 @@ export interface Post {
     content: string;
     images: string[];
     likes: string[];
+    comments: {
+        userId: any;
+        text: string;
+        createdAt: string;
+    }[];
     createdAt: string;
 }
 
@@ -99,11 +104,14 @@ export interface Reel {
     _id: string;
     title: string;
     description: string;
-    type: string;
+    type: 'seeker_pitch' | 'company_tour' | 'job_preview';
     tags: string[];
-    creatorId: string;
+    creatorId: any;
     videoUrl: string;
+    playbackId?: string;
     thumbnailUrl: string;
+    likes: string[];
+    views: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -241,6 +249,22 @@ export const posts = {
         return request<{ success: boolean }>(`/posts/${id}`, {
             method: 'DELETE',
         });
+    },
+    getByUser: (userId: string) => {
+        return request<{ success: boolean; data: Post[] }>(`/posts?userId=${userId}`, {
+            method: 'GET',
+        });
+    },
+    like: (id: string) => {
+        return request<{ success: boolean }>((`/posts/${id}/like`), {
+            method: 'POST',
+        });
+    },
+    comment: (id: string, text: string) => {
+        return request<{ success: boolean; data: Post }>(`/posts/${id}/comment`, {
+            method: 'POST',
+            body: JSON.stringify({ text }),
+        });
     }
 };
 
@@ -254,6 +278,16 @@ export const reels = {
     delete: (id: string) => {
         return request<{ success: boolean }>(`/reels/${id}`, {
             method: 'DELETE',
+        });
+    },
+    getByUser: (userId: string) => {
+        return request<{ success: boolean; data: Reel[] }>(`/reels?userId=${userId}`, {
+            method: 'GET',
+        });
+    },
+    like: (id: string) => {
+        return request<{ success: boolean }>(`/reels/${id}/like`, {
+            method: 'POST',
         });
     }
 };
