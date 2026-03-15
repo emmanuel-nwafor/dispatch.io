@@ -53,7 +53,7 @@ export default function Index() {
         Animated.delay(1200),
       ]).start(async () => {
         const token = await storage.getToken();
-        const user = await storage.getUser(); 
+        const user = await storage.getUser();
 
         if (token && user) {
           // Graceful role handling

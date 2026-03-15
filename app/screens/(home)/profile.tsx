@@ -76,7 +76,7 @@ export default function SeekersProfileScreen() {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    const [uploading, setUploading] = useState<{ avatar: boolean; cover: boolean }>({ avatar: false, cover: false });
 
     const fetchProfile = async (isRefreshing = false) => {
         if (!isRefreshing) setLoading(true);
@@ -103,7 +103,7 @@ export default function SeekersProfileScreen() {
         fetchProfile();
     }, []);
 
-    const pickImage = async () => {
+    const pickImage = async (type: 'avatar' | 'cover') => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
@@ -114,46 +114,49 @@ export default function SeekersProfileScreen() {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
-                aspect: [1, 1],
+                aspect: type === 'avatar' ? [1, 1] : [16, 9],
                 quality: 0.8,
             });
 
             if (!result.canceled) {
-                uploadImage(result.assets[0].uri);
+                uploadImage(result.assets[0].uri, type);
             }
         } catch (error) {
             console.error("Image pick error:", error);
         }
     };
 
-    const uploadImage = async (uri: string) => {
-        setUploading(true);
+    const uploadImage = async (uri: string, type: 'avatar' | 'cover') => {
+        setUploading(prev => ({ ...prev, [type]: true }));
         try {
             const formData = new FormData();
             const filename = uri.split('/').pop();
             const match = /\.(\w+)$/.exec(filename || '');
-            const type = match ? `image/${match[1]}` : `image`;
+            const mimeType = match ? `image/${match[1]}` : `image`;
 
-            formData.append('avatar', {
+            formData.append(type === 'avatar' ? 'avatar' : 'coverImage', {
                 uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
                 name: filename,
-                type,
+                type: mimeType,
             } as any);
 
             const res = await userApi.uploadImage(formData);
             if (res.success) {
                 if (user) {
-                    setUser({
-                        ...user,
-                        profile: { ...user.profile, resumeUrl: res.imageUrl }
-                    });
+                    const updatedUser = { ...user };
+                    if (type === 'avatar') {
+                        updatedUser.avatar = res.imageUrl;
+                    } else {
+                        updatedUser.coverImage = res.imageUrl;
+                    }
+                    setUser(updatedUser);
                 }
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Profile picture updated!' });
+                Toast.show({ type: 'success', text1: 'Success', text2: `${type === 'avatar' ? 'Profile picture' : 'Cover photo'} updated!` });
             }
         } catch (error: any) {
             Toast.show({ type: 'error', text1: 'Upload Failed', text2: error.message });
         } finally {
-            setUploading(false);
+            setUploading(prev => ({ ...prev, [type]: false }));
         }
     };
 
@@ -164,8 +167,9 @@ export default function SeekersProfileScreen() {
 
     const fullName = user?.profile?.fullName || 'Anonymous';
     const headline = user?.role === 'seeker' ? 'Job Seeker' : 'Recruiter';
-    const location = user?.profile?.location ? ` • ${user.profile.location}` : '';
-    const avatar = user?.profile?.resumeUrl || 'https://ui-avatars.com/api/?name=' + fullName.replace(' ', '+') + '&background=random';
+    const locationStr = user?.profile?.location ? ` • ${user.profile.location}` : '';
+    const avatar = user?.avatar || user?.profile?.resumeUrl || 'https://ui-avatars.com/api/?name=' + fullName.replace(' ', '+') + '&background=random';
+    const coverImage = user?.coverImage || 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000';
 
     const stats = [
         { label: 'Applied', value: String(user?.appliedJobsCount || 0), icon: 'send-outline', color: theme.brand },
@@ -174,7 +178,7 @@ export default function SeekersProfileScreen() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={{ flex: 1, backgroundColor: theme.background }} className='mb-20'>
             <StatusBar style={isDark ? "light" : "dark"} />
 
             <SafeAreaView className="flex-1" edges={['top']}>
@@ -205,22 +209,38 @@ export default function SeekersProfileScreen() {
                             <RefreshControl
                                 refreshing={refreshing}
                                 onRefresh={onRefresh}
-                                tintColor="#006400" // iOS Dark Green
-                                colors={["#006400"]} // Android Dark Green
+                                tintColor="#006400"
+                                colors={["#006400"]}
                             />
                         }
                     >
-                        {/* Profile Card */}
-                        <View style={{ paddingHorizontal: wp('6%'), }} className="items-center mb-8">
-                            <View className="relative mb-5">
+                        {/* Cover Photo */}
+                        <View style={{ height: hp('22%'), width: '100%' }} className="relative">
+                            <Image source={{ uri: coverImage }} className="w-full h-full" resizeMode="cover" />
+                            <TouchableOpacity
+                                onPress={() => pickImage('cover')}
+                                className="absolute bottom-3 right-5 bg-black/40 p-2 rounded-full"
+                            >
+                                <Ionicons name="camera" size={20} color="white" />
+                            </TouchableOpacity>
+                            {uploading.cover && (
+                                <View style={styles.uploadOverlayFull}>
+                                    <ActivityIndicator color="#fff" size="large" />
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Profile Info Section */}
+                        <View style={{ marginTop: -wp('16%'), paddingHorizontal: wp('6%') }} className="items-center mb-8">
+                            <View className="relative mb-4">
                                 <View
-                                    style={{ width: wp('32%'), height: wp('32%'), borderColor: theme.brand, backgroundColor: theme.background }}
-                                    className="rounded-full border-[3px] p-1.5 shadow-xl justify-center items-center overflow-hidden"
+                                    style={{ width: wp('32%'), height: wp('32%'), borderColor: theme.background, backgroundColor: theme.background }}
+                                    className="rounded-full border-[4px] shadow-xl justify-center items-center overflow-hidden"
                                 >
                                     <Image source={{ uri: avatar }} className="w-full h-full rounded-full bg-zinc-200" />
 
                                     {/* Uploading Overlay */}
-                                    {uploading && (
+                                    {uploading.avatar && (
                                         <View style={styles.uploadOverlay}>
                                             <ActivityIndicator color="#fff" size="small" />
                                         </View>
@@ -228,17 +248,17 @@ export default function SeekersProfileScreen() {
                                 </View>
 
                                 <TouchableOpacity
-                                    onPress={pickImage}
-                                    disabled={uploading}
-                                    style={{ backgroundColor: theme.text, borderColor: theme.background }}
-                                    className="absolute bottom-1 right-1 w-10 h-10 rounded-full items-center justify-center border-[4px] shadow-lg"
+                                    onPress={() => pickImage('avatar')}
+                                    disabled={uploading.avatar}
+                                    style={{ backgroundColor: theme.brand, borderColor: theme.background }}
+                                    className="absolute bottom-1 right-1 w-9 h-9 rounded-full items-center justify-center border-[3px] shadow-lg"
                                 >
-                                    <Ionicons name="camera" size={18} color={theme.background} />
+                                    <Ionicons name="camera" size={16} color="white" />
                                 </TouchableOpacity>
                             </View>
 
                             <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }} className="text-2xl mb-1">{fullName}</Text>
-                            <Text style={{ fontFamily: 'Outfit-Medium' }} className="text-zinc-500 text-[15px]">{headline}{location}</Text>
+                            <Text style={{ fontFamily: 'Outfit-Medium' }} className="text-zinc-500 text-[15px]">{headline}{locationStr}</Text>
                         </View>
 
                         {/* Stats */}
@@ -304,5 +324,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 999,
+    },
+    uploadOverlayFull: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
     }
 });

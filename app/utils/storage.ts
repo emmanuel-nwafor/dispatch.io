@@ -25,7 +25,7 @@ export const storage = {
             } else {
                 token = await SecureStore.getItemAsync(TOKEN_KEY);
             }
-            return token;
+            return token; // Returns the actual saved token or null if not logged in
         } catch (error) {
             console.error('Error getting token:', error);
             return null;

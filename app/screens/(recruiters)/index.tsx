@@ -115,7 +115,7 @@ export default function RecruitersHomeScreen() {
                         bannerUrl="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000"
                         onEditPress={() => {
                             Haptics.selectionAsync();
-                            Optional: router.push('/screens/profile/edit');
+                            router.push('/screens/profile/edit');
                         }}
                     />
 

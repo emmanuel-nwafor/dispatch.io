@@ -40,7 +40,6 @@ export default function ProfileDetailsScreen() {
             if (isRefreshing) setRefreshing(true);
             else setLoading(true);
 
-            // Using getMe for now; typically you'd use getById(id)
             const res = await userApi.getMe();
 
             if (res.success) {
@@ -65,7 +64,6 @@ export default function ProfileDetailsScreen() {
         fetchUser(true);
     }, [id]);
 
-    // Show skeleton during initial load OR when pull-to-refresh is active
     if (loading || refreshing) {
         return <RecruiterProfileSkeleton />;
     }

@@ -24,7 +24,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { Skeleton } from '@/components/skeletons/HomeSkeleton';
-import { feeds as feedsApi } from '@/app/data/api'; // Ensure this path is correct
+import { feeds as feedsApi } from '@/app/data/api';
 import Toast from 'react-native-toast-message';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -53,24 +53,37 @@ export default function UsersHomeScreen() {
         try {
             const res = await feedsApi.getFeed();
             if (res.success) {
-                const transformedData = (res as any).data.map((item: any) => ({
-                    id: item._id,
-                    type: item.feedType || 'job',
-                    user: item.companyName || 'Anonymous Company',
-                    handle: `@${item.companyName?.replace(/\s+/g, '').toLowerCase() || 'recruiter'}`,
-                    avatar: `https://ui-avatars.com/api/?name=${item.companyName?.replace(/\s+/g, '+') || 'C'}&background=random`,
-                    time: 'Recent', // Or format item.createdAt
-                    content: item.description,
-                    jobRole: item.title,
-                    salary: `${item.salaryRange?.min} - ${item.salaryRange?.max} ${item.salaryRange?.currency}`,
-                    location: item.location,
-                    stats: {
-                        comments: '0',
-                        reposts: '0',
-                        likes: String(item.applicantsCount || 0)
-                    },
-                    attachments: [] // API currently doesn't provide images
-                }));
+                const transformedData = (res as any).data.map((item: any) => {
+                    const isJob = item.feedType === 'job';
+                    const isPost = item.feedType === 'post';
+                    const isReel = item.feedType === 'reel';
+
+                    const creatorName = isJob
+                        ? (item.recruiter?.recruiterProfile?.companyName || 'Anonymous Company')
+                        : (item.creatorId?.recruiterProfile?.companyName || item.creatorId?.profile?.fullName || 'Anonymous');
+
+                    const avatar = item.recruiter?.avatar || item.creatorId?.avatar ||
+                        `https://ui-avatars.com/api/?name=${creatorName.replace(/\s+/g, '+')}&background=random`;
+
+                    return {
+                        id: item._id,
+                        type: item.feedType,
+                        user: creatorName,
+                        handle: `@${creatorName.replace(/\s+/g, '').toLowerCase()}`,
+                        avatar,
+                        time: 'Recent',
+                        content: isJob ? item.description : item.content,
+                        jobRole: item.title,
+                        salary: isJob ? `${item.salaryRange?.min} - ${item.salaryRange?.max} ${item.salaryRange?.currency}` : undefined,
+                        location: item.location || (isJob ? item.recruiter?.recruiterProfile?.location : item.creatorId?.profile?.location),
+                        stats: {
+                            comments: '0',
+                            reposts: '0',
+                            likes: isJob ? String(item.applicantsCount || 0) : String(item.likes?.length || 0)
+                        },
+                        attachments: isPost && item.images ? item.images.map((img: string) => ({ type: 'image', url: img })) : (isReel ? [{ type: 'video', url: item.videoUrl, thumbnail: item.thumbnailUrl }] : [])
+                    };
+                });
 
                 setFeedData(transformedData);
             }

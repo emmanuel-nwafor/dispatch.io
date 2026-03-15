@@ -20,16 +20,6 @@ export interface UserDetails {
     preferredJobTypes: string[];
 }
 
-export interface User {
-    createdAt: number;
-    _id: string;
-    email: string;
-    role: string;
-    isProfileCompleted: boolean;
-    profile: UserDetails;
-    appliedJobsCount?: number;
-}
-
 export interface RecruiterProfile {
     companyName: string;
     companyWebsite: string;
@@ -38,6 +28,28 @@ export interface RecruiterProfile {
     location: string;
     accountabilityScore: number;
     verifiedCompany: boolean;
+}
+
+export interface Post {
+    _id: string;
+    creatorId: any;
+    content: string;
+    images: string[];
+    likes: string[];
+    createdAt: string;
+}
+
+export interface User {
+    createdAt: number;
+    _id: string;
+    email: string;
+    role: string;
+    isProfileCompleted: boolean;
+    avatar?: string;
+    coverImage?: string;
+    profile: UserDetails;
+    recruiterProfile?: RecruiterProfile;
+    appliedJobsCount?: number;
 }
 
 export interface Job {
@@ -153,39 +165,102 @@ export const user = {
             body: JSON.stringify(profileData),
         });
     },
+    updateProfile: (profileData: any) => {
+        return request<{ success: boolean; user: User }>('/users/profile', {
+            method: 'PATCH',
+            body: JSON.stringify(profileData),
+        });
+    },
     uploadImage: (formData: FormData) => {
         return request<{ success: boolean; imageUrl: string; user: User }>('/users/upload', {
             method: 'POST',
             body: formData,
         });
     },
+    getProfile: (id: string) => {
+        return request<{ success: boolean; user: User }>(`/users/${id}`, {
+            method: 'GET',
+        });
+    },
     getMe: () => {
         return request<{ success: boolean; user: User }>('/users/me', {
             method: 'GET',
+        });
+    },
+    deleteAccount: () => {
+        return request<{ success: boolean }>('/users/profile', {
+            method: 'DELETE',
         });
     }
 };
 
 export const jobs = {
-    getAll: () => {
-        return request<JobsResponse>('/all-jobs', {
+    getAll: (params?: any) => {
+        const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+        return request<JobsResponse>(`/all-jobs${query}`, {
             method: 'GET',
+        });
+    },
+    getById: (id: string) => {
+        return request<{ success: boolean; job: Job }>(`/jobs/${id}`, {
+            method: 'GET',
+        });
+    },
+    create: (jobData: any) => {
+        return request<{ success: boolean; job: Job }>('/jobs', {
+            method: 'POST',
+            body: JSON.stringify(jobData),
+        });
+    },
+    update: (id: string, jobData: any) => {
+        return request<{ success: boolean; job: Job }>(`/jobs/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(jobData),
+        });
+    },
+    delete: (id: string) => {
+        return request<{ success: boolean }>(`/jobs/${id}`, {
+            method: 'DELETE',
+        });
+    }
+};
+
+export const posts = {
+    create: (formData: FormData) => {
+        return request<{ success: boolean; data: Post }>('/posts', {
+            method: 'POST',
+            body: formData,
+        });
+    },
+    getAll: () => {
+        return request<{ success: boolean; data: Post[] }>('/posts', {
+            method: 'GET',
+        });
+    },
+    delete: (id: string) => {
+        return request<{ success: boolean }>(`/posts/${id}`, {
+            method: 'DELETE',
         });
     }
 };
 
 export const reels = {
     create: (formData: FormData) => {
-        return request<{ success: boolean; message: string; data: any }>('/reels', {
+        return request<{ success: boolean; message: string; data: Reel }>('/reels', {
             method: 'POST',
             body: formData,
+        });
+    },
+    delete: (id: string) => {
+        return request<{ success: boolean }>(`/reels/${id}`, {
+            method: 'DELETE',
         });
     }
 };
 
 export const feeds = {
-    getFeed: () => {
-        return request<{ success: boolean; feed: any }>('/feed', {
+    getFeed: (page = 1, limit = 10) => {
+        return request<{ success: boolean; data: any[] }>(`/feed?page=${page}&limit=${limit}`, {
             method: 'GET',
         });
     }

@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 interface FeedItemProps {
     item: {
         id: number | string;
-        type: 'job' | 'post';
+        type: 'job' | 'post' | 'reel' | 'candidate';
         user: string;
         handle: string;
         avatar: string;
@@ -18,6 +18,7 @@ interface FeedItemProps {
         content: string;
         jobRole?: string;
         salary?: string;
+        location?: string;
         stats: {
             comments: string;
             reposts: string;
@@ -168,10 +169,29 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
                         >
                             <View className="p-3" style={{ backgroundColor: isDark ? '#1a1a1a' : '#f8fafc' }}>
                                 <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{item.jobRole}</Text>
-                                <Text className="text-zinc-500 text-xs" style={{ fontFamily: 'Outfit-Medium' }}>{item.salary} • Remote</Text>
+                                <Text className="text-zinc-500 text-xs" style={{ fontFamily: 'Outfit-Medium' }}>{item.salary} • {item.location || 'Remote'}</Text>
                                 <View className="mt-2 bg-zinc-500/10 self-start px-3 py-1 rounded-full">
                                     <Text style={{ fontSize: 10, color: theme.brand, fontFamily: 'Outfit-Bold' }}>APPLY NOW</Text>
                                 </View>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+
+                    {item.type === 'reel' && (
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: "/screens/reels/[id]", params: { id: item.id } } as any)}
+                            className="rounded-2xl border mb-3 overflow-hidden"
+                            style={{ borderColor: isDark ? '#2f3336' : '#cfd9de' }}
+                        >
+                            <View className="p-3 bg-zinc-900 flex-row items-center">
+                                <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center mr-3">
+                                    <Ionicons name="play" size={20} color="white" />
+                                </View>
+                                <View>
+                                    <Text style={{ fontFamily: 'Outfit-Bold', color: 'white' }}>Watch Reel</Text>
+                                    <Text className="text-zinc-400 text-[10px]" style={{ fontFamily: 'Outfit-Medium' }}>SHORT VIDEO PREVIEW</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color="white" className="ml-auto" />
                             </View>
                         </TouchableOpacity>
                     )}
