@@ -21,7 +21,6 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import { Colors } from '@/app/constants/Colors';
 import LocationModal from '@/components/modals/LocationModal';
 import CompleteProfileHeader from '@/components/profile/CompleteProfileHeader';
-import { profile } from '@/app/data/api';
 import { useUserStore } from '@/hooks/useUserStore';
 import { storage } from '@/app/utils/storage';
 
@@ -34,6 +33,7 @@ import EducationStep from './steps/EducationStep';
 import VisualsStep from './steps/VisualsStep';
 import DocumentsStep from './steps/DocumentsStep';
 import PersonalStep from './steps/PersonalStep';
+import { user } from '@/app/data/api';
 
 interface Experience {
     id: string;
@@ -62,7 +62,7 @@ interface SelectedLocation {
     stateCode?: string;  // Optional
 }
 
-export default function ProfileScreen() {
+export default function CompleteProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -134,14 +134,15 @@ export default function ProfileScreen() {
                 experienceYear: formData.experience.length, // Placeholder logic
                 education: formData.education.length > 0 ? formData.education[0]?.degree : '',
                 preferredJobTypes: formData.category ? [formData.category] : [],
-                // Recruiter specific
                 companyName: formData.fullName,
                 industry: formData.industry,
                 companySize: '1-10', // Default
-                companyLocation: `${formData.location.state}, ${formData.location.country}`
+                companyLocation: `${formData.location.state}, ${formData.location.country}`,
+                profileImage: formData.profileImage,
+                coverImage: formData.coverImage
             };
 
-            const response = await profile.complete(payload);
+            const response = await user.completeProfile(payload);
 
             // Update saved user data
             await storage.saveUser(response.user);

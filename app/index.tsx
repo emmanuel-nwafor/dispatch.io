@@ -5,7 +5,6 @@ import {
   Animated,
   Easing,
   StatusBar,
-  Text,
   View,
 } from 'react-native';
 import {
@@ -54,12 +53,16 @@ export default function Index() {
         Animated.delay(1200),
       ]).start(async () => {
         const token = await storage.getToken();
+        const user = await storage.getUser(); 
 
-        if (token) {
-          // If token exists, go to home/tabs
-          router.replace('/screens/(home)');
+        if (token && user) {
+          // Graceful role handling
+          if (user.role === 'recruiter') {
+            router.replace('/screens/(recruiters)');
+          } else {
+            router.replace('/screens/(home)');
+          }
         } else {
-          // Otherwise, go to login
           router.replace('/screens/auth/login');
         }
       });

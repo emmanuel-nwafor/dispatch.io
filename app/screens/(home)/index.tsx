@@ -24,6 +24,8 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { Skeleton } from '@/components/skeletons/HomeSkeleton';
+import { feeds as feedsApi } from '@/app/data/api'; // Ensure this path is correct
+import Toast from 'react-native-toast-message';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -40,80 +42,65 @@ export default function UsersHomeScreen() {
     const [isLoadingFeed, setIsLoadingFeed] = useState(true);
     const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('forYou');
     const [searchQuery, setSearchQuery] = useState('');
+    const [feedData, setFeedData] = useState<any[]>([]);
 
-    const loadFeed = useCallback(() => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setIsLoadingFeed(true);
+    const loadFeed = useCallback(async (isRefreshing = false) => {
+        if (!isRefreshing) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setIsLoadingFeed(true);
+        }
 
-        setTimeout(() => {
+        try {
+            const res = await feedsApi.getFeed();
+            if (res.success) {
+                const transformedData = (res as any).data.map((item: any) => ({
+                    id: item._id,
+                    type: item.feedType || 'job',
+                    user: item.companyName || 'Anonymous Company',
+                    handle: `@${item.companyName?.replace(/\s+/g, '').toLowerCase() || 'recruiter'}`,
+                    avatar: `https://ui-avatars.com/api/?name=${item.companyName?.replace(/\s+/g, '+') || 'C'}&background=random`,
+                    time: 'Recent', // Or format item.createdAt
+                    content: item.description,
+                    jobRole: item.title,
+                    salary: `${item.salaryRange?.min} - ${item.salaryRange?.max} ${item.salaryRange?.currency}`,
+                    location: item.location,
+                    stats: {
+                        comments: '0',
+                        reposts: '0',
+                        likes: String(item.applicantsCount || 0)
+                    },
+                    attachments: [] // API currently doesn't provide images
+                }));
+
+                setFeedData(transformedData);
+            }
+        } catch (err) {
+            console.error("Feed Load Error:", err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Could not update feed' });
+        } finally {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setIsLoadingFeed(false);
             setRefreshing(false);
-        }, 2000);
+        }
     }, []);
 
     useEffect(() => {
         loadFeed();
-    }, []);
-
-    const feedData = [
-        {
-            id: 1,
-            type: 'job',
-            user: 'Airbnb Careers',
-            handle: '@airbnb_jobs',
-            avatar: 'https://i.pravatar.cc/150?u=airbnb',
-            time: '2h',
-            content: "We're looking for a UI Engineer to help us redefine travel. Must love Design Systems and React Native! ✈️ #hiring #uiux",
-            jobRole: 'UI Engineer',
-            salary: '$140k - $180k',
-            stats: { comments: '12', reposts: '45', likes: '320' },
-            attachments: [
-                { type: 'image', url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000' }
-            ]
-        },
-        {
-            id: 2,
-            type: 'post',
-            user: 'Sarah Jenkins',
-            handle: '@sarah_codes',
-            avatar: 'https://i.pravatar.cc/150?u=sarah',
-            time: '4h',
-            content: "Just finished a technical interview with a fintech startup. The 'live coding' anxiety is real, but I think I nailed the system design portion! 🚀 Here are some shots from my home setup.",
-            stats: { comments: '24', reposts: '5', likes: '128' },
-            attachments: [
-                { type: 'image', url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800' },
-                { type: 'image', url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800' },
-                { type: 'image', url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800' }
-            ]
-        },
-        {
-            id: 3,
-            type: 'post',
-            user: 'TechCrunch',
-            handle: '@techcrunch',
-            avatar: 'https://i.pravatar.cc/150?u=tc',
-            time: '6h',
-            content: "Check out the new Apple Vision Pro workspace integration. The future of remote work is here. 🥽",
-            stats: { comments: '89', reposts: '210', likes: '1.2k' },
-            attachments: [
-                { type: 'video', url: 'https://path-to-video.mp4', thumbnail: 'https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=800' }
-            ]
-        }
-    ];
+    }, [loadFeed]);
 
     const onRefresh = useCallback(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setRefreshing(true);
-        loadFeed();
+        loadFeed(true);
     }, [loadFeed]);
 
     const filteredFeed = useMemo(() => {
         return feedData.filter(item =>
             item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.user.toLowerCase().includes(searchQuery.toLowerCase())
+            item.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.jobRole?.toLowerCase().includes(searchQuery.toLowerCase())
         );
-    }, [searchQuery]);
+    }, [searchQuery, feedData]);
 
     const FeedSkeleton = () => (
         <View style={{ paddingBottom: 100 }}>
@@ -128,7 +115,7 @@ export default function UsersHomeScreen() {
                     </View>
                     <Skeleton width="95%" height={14} borderRadius={4} style={{ marginBottom: 8 }} />
                     <Skeleton width="85%" height={14} borderRadius={4} style={{ marginBottom: 16 }} />
-                    <Skeleton width="100%" height={200} borderRadius={16} />
+                    <Skeleton width="100%" height={hp('20%')} borderRadius={16} />
                 </View>
             ))}
         </View>
@@ -155,6 +142,7 @@ export default function UsersHomeScreen() {
                             refreshing={refreshing}
                             onRefresh={onRefresh}
                             tintColor="#006400"
+                            colors={["#006400"]}
                         />
                     }
                 >
@@ -202,13 +190,19 @@ export default function UsersHomeScreen() {
                             <FeedSkeleton />
                         ) : (
                             <View className="pb-32">
-                                {filteredFeed.map((item) => (
-                                    <FeedItem
-                                        key={item.id}
-                                        item={item as any}
-                                        onApply={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)}
-                                    />
-                                ))}
+                                {filteredFeed.length > 0 ? (
+                                    filteredFeed.map((item) => (
+                                        <FeedItem
+                                            key={item.id}
+                                            item={item}
+                                            onApply={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)}
+                                        />
+                                    ))
+                                ) : (
+                                    <View className="items-center justify-center py-20">
+                                        <Text style={{ fontFamily: 'Outfit-Medium', color: '#71717a' }}>No jobs found</Text>
+                                    </View>
+                                )}
                             </View>
                         )}
                     </View>
@@ -220,7 +214,7 @@ export default function UsersHomeScreen() {
                 onPress={() => router.push('/screens/create-post' as any)}
                 style={[styles.fab, { backgroundColor: theme.brand }]}
             >
-                <Ionicons name="add" size={wp('8%')} color="#000" />
+                <Ionicons name="add" size={wp('8%')} color="#fff" />
             </TouchableOpacity>
 
             <JobFilterModal
@@ -243,6 +237,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
     },
     feedItemSkeleton: {
         padding: 16,

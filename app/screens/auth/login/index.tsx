@@ -51,14 +51,19 @@ export default function Login() {
             if (response.success) {
                 await storage.saveToken(response.token);
                 await storage.saveUser(response.user);
+
                 Toast.show({
                     type: 'success',
                     text1: 'Login Successful',
-                    text2: 'Welcome back to dispatch.io!'
+                    text2: `Welcome back to dispatch.io!`
                 });
 
-                console.log(response.token, response.user)
-                router.replace('/screens/(home)');
+                // Role-based navigation logic
+                if (response.user.role === 'recruiter') {
+                    router.replace('/screens/(recruiters)');
+                } else {
+                    router.replace('/screens/(home)');
+                }
             }
         } catch (error: any) {
             Toast.show({
@@ -86,6 +91,7 @@ export default function Login() {
                 <KeyboardAwareScrollView
                     contentContainerStyle={{ flexGrow: 1, paddingHorizontal: wp('6%') }}
                     enableOnAndroid={true}
+                    extraScrollHeight={hp('5%')}
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={{ marginTop: hp('5%'), flex: 1 }}>
@@ -121,7 +127,7 @@ export default function Login() {
                                     placeholderTextColor={isDark ? '#52525b' : '#a1a1aa'}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
-                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: 15 }}
+                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: hp('1.8%') }}
                                 />
                             </View>
 
@@ -135,7 +141,7 @@ export default function Login() {
                                     onChangeText={setPassword}
                                     placeholderTextColor={isDark ? '#52525b' : '#a1a1aa'}
                                     secureTextEntry={!isPasswordVisible}
-                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: 15, flex: 1 }}
+                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: hp('1.8%'), flex: 1 }}
                                 />
                                 <TouchableOpacity
                                     onPress={() => setIsPasswordVisible(!isPasswordVisible)}
@@ -143,7 +149,7 @@ export default function Login() {
                                 >
                                     <Ionicons
                                         name={isPasswordVisible ? "eye-outline" : "eye-off-outline"}
-                                        size={20}
+                                        size={wp('5%')}
                                         color={isDark ? '#a1a1aa' : '#6b7280'}
                                     />
                                 </TouchableOpacity>
@@ -185,7 +191,7 @@ export default function Login() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="flex-1 py-3.5 rounded-xl border border-zinc-800/10 items-center justify-center"
+                                className="flex-1 py-3.5 rounded-xl border border-zinc-800/10 items-center justify-center ml-4"
                             >
                                 <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>Apple</Text>
                             </TouchableOpacity>

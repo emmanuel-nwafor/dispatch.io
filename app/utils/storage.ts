@@ -19,8 +19,13 @@ export const storage = {
 
     getToken: async () => {
         try {
-            const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5OTRhNmQ5NTgxYzcyZDlkYTlmOGYzYiIsInJvbGUiOiJzZWVrZXIiLCJpYXQiOjE3NzM1MTAwOTgsImV4cCI6MTc3NjEwMjA5OH0.HYF2T8q2eMk6lC7wv0xhuXJ8hSpzgicbqgkWm7YYqXo";
-            return testToken;
+            let token;
+            if (Platform.OS === 'web') {
+                token = localStorage.getItem(TOKEN_KEY);
+            } else {
+                token = await SecureStore.getItemAsync(TOKEN_KEY);
+            }
+            return token;
         } catch (error) {
             console.error('Error getting token:', error);
             return null;

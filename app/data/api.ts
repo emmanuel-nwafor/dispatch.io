@@ -21,6 +21,7 @@ export interface UserDetails {
 }
 
 export interface User {
+    createdAt: number;
     _id: string;
     email: string;
     role: string;
@@ -178,6 +179,14 @@ export const reels = {
         return request<{ success: boolean; message: string; data: any }>('/reels', {
             method: 'POST',
             body: formData,
+        });
+    }
+};
+
+export const feeds = {
+    getFeed: () => {
+        return request<{ success: boolean; feed: any }>('/feed', {
+            method: 'GET',
         });
     }
 };

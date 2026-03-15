@@ -12,14 +12,16 @@ import {
     StyleSheet,
     LayoutAnimation,
     Platform,
-    UIManager
+    UIManager,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
-// New Dashboard Components
+// API and Components
+import { user, User } from '@/app/data/api';
 import RecruiterProfileHeader from '@/components/recruiters/RecruiterProfileHeader';
 import RecruiterStats from '@/components/recruiters/RecruiterStats';
 import QuickActions from '@/components/recruiters/QuickActions';
@@ -37,21 +39,28 @@ export default function RecruitersHomeScreen() {
 
     const [refreshing, setRefreshing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [userData, setUserData] = useState<User | null>(null);
 
-    const loadData = useCallback(() => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setIsLoading(true);
-
-        setTimeout(() => {
+    const loadData = useCallback(async () => {
+        try {
+            // LayoutAnimation for smooth state transitions
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+            const response = await user.getMe();
+            if (response.success) {
+                setUserData(response.user);
+            }
+        } catch (error) {
+            console.error("Failed to fetch recruiter profile:", error);
+        } finally {
             setIsLoading(false);
             setRefreshing(false);
-        }, 1500);
+        }
     }, []);
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [loadData]);
 
     const onRefresh = useCallback(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -63,28 +72,24 @@ export default function RecruitersHomeScreen() {
         {
             id: 1,
             type: 'job',
-            user: 'Airbnb Careers',
-            handle: '@airbnb_jobs',
-            avatar: 'https://i.pravatar.cc/150?u=airbnb',
+            user: userData?.profile?.fullName || 'Company Name',
+            handle: `@${userData?.profile?.fullName?.toLowerCase().replace(/\s/g, '_') || 'recruiter'}`,
+            avatar: userData?.profile?.resumeUrl || 'https://i.pravatar.cc/150?u=fallback',
             time: '2d ago',
             content: "We're looking for a UI Engineer to help us redefine travel. Must love Design Systems and React Native! ✈️",
             jobRole: 'UI Engineer',
             salary: '$140k - $180k',
             stats: { comments: '12', reposts: '45', likes: '320' },
-        },
-        {
-            id: 2,
-            type: 'job',
-            user: 'Airbnb Careers',
-            handle: '@airbnb_jobs',
-            avatar: 'https://i.pravatar.cc/150?u=airbnb',
-            time: '5d ago',
-            content: "Senior Backend Developer needed for our core infrastructure team. Focus on scalability and performance.",
-            jobRole: 'Senior Backend Developer',
-            salary: '$160k - $210k',
-            stats: { comments: '8', reposts: '12', likes: '150' },
         }
     ];
+
+    if (isLoading && !refreshing) {
+        return (
+            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#006400" />
+            </View>
+        );
+    }
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -101,14 +106,17 @@ export default function RecruitersHomeScreen() {
                         />
                     }
                 >
-                    {/* LinkedIn Style Profile Header */}
+                    {/* Dynamic Profile Header from API */}
                     <RecruiterProfileHeader
-                        name="Emmanuel Nwafor"
-                        headline="Talent Acquisition Specialist at Dispatch.io | Scaling Tech Teams 🚀"
-                        location="London, United Kingdom"
-                        avatarUrl="https://i.pravatar.cc/300?u=emmanuel"
+                        name={userData?.profile?.fullName || "Recruiter Name"}
+                        headline={userData?.profile?.bio || "Talent Acquisition Specialist"}
+                        location={userData?.profile?.location || "Global"}
+                        avatarUrl={userData?.profile?.resumeUrl || "https://i.pravatar.cc/300?u=recruiter"}
                         bannerUrl="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000"
-                        onEditPress={() => Haptics.selectionAsync()}
+                        onEditPress={() => {
+                            Haptics.selectionAsync();
+                            Optional: router.push('/screens/profile/edit');
+                        }}
                     />
 
                     {/* Stats/Analytics Section */}
@@ -117,7 +125,7 @@ export default function RecruitersHomeScreen() {
                     {/* Quick Actions */}
                     <QuickActions />
 
-                    {/* Active Jobs/Postings Section */}
+                    {/* Active Jobs Section */}
                     <View style={styles.sectionContainer}>
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Job Postings</Text>
@@ -137,17 +145,20 @@ export default function RecruitersHomeScreen() {
                         </View>
                     </View>
 
-                    <View style={{ height: 100 }} />
+                    <View style={{ height: hp('12%') }} />
                 </ScrollView>
             </SafeAreaView>
 
             {/* Post Job FAB */}
             <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => router.push('/screens/create-post' as any)}
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    router.push('/screens/create-post' as any);
+                }}
                 style={[styles.fab, { backgroundColor: theme.brand }]}
             >
-                <Ionicons name="add" size={wp('8%')} color="#000" />
+                <Ionicons name="add" size={wp('8%')} color={isDark ? "#000" : "#FFF"} />
             </TouchableOpacity>
         </View>
     );
@@ -158,9 +169,9 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: hp('4%'),
         right: wp('6%'),
-        width: wp('15%'),
-        height: wp('15%'),
-        borderRadius: wp('7.5%'),
+        width: wp('16%'),
+        height: wp('16%'),
+        borderRadius: wp('8%'),
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 8,
@@ -170,22 +181,22 @@ const styles = StyleSheet.create({
         shadowRadius: 4.65,
     },
     sectionContainer: {
-        marginTop: 10,
+        marginTop: hp('1.5%'),
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        marginBottom: 12,
+        paddingHorizontal: wp('4%'),
+        marginBottom: hp('1.5%'),
     },
     sectionTitle: {
         fontFamily: 'Outfit-Bold',
-        fontSize: 18,
+        fontSize: wp('4.5%'),
     },
     seeAll: {
         fontFamily: 'Outfit-Bold',
-        fontSize: 14,
+        fontSize: wp('3.5%'),
     },
     jobsList: {
         borderTopWidth: 1,
