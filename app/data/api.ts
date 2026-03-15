@@ -152,7 +152,7 @@ export const user = {
             body: JSON.stringify(profileData),
         });
     },
-    uploadAvatar: (formData: FormData) => {
+    uploadImage: (formData: FormData) => {
         return request<{ success: boolean; imageUrl: string; user: User }>('/users/upload', {
             method: 'POST',
             body: formData,

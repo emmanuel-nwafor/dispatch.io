@@ -115,7 +115,7 @@ export default function ProfileScreen() {
                 type,
             } as any);
 
-            const res = await userApi.uploadAvatar(formData);
+            const res = await userApi.uploadImage(formData);
             if (res.success) {
                 // Update local user state with new image URL
                 if (user) {
@@ -123,7 +123,7 @@ export default function ProfileScreen() {
                         ...user,
                         profile: {
                             ...user.profile,
-                            resumeUrl: res.imageUrl // Backend currently uses resumeUrl as placeholder
+                            resumeUrl: res.imageUrl
                         }
                     });
                 }

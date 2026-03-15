@@ -24,13 +24,13 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
             const match = /\.(\w+)$/.exec(filename || '');
             const fileType = match ? `image/${match[1]}` : `image`;
 
-            formDataUpload.append('avatar', {
+            formDataUpload.append('image', {
                 uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
                 name: filename,
                 type: fileType,
             } as any);
 
-            const res = await userApi.uploadAvatar(formDataUpload);
+            const res = await userApi.uploadImage(formDataUpload);
             if (res.success) {
                 setFormData({
                     ...formData,
