@@ -5,14 +5,14 @@ import {
   Animated,
   Easing,
   StatusBar,
-  StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 import {
   widthPercentageToDP as wp
 } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { storage } from '@/app/utils/storage';
 
 export default function Index() {
   const router = useRouter();
@@ -30,12 +30,14 @@ export default function Index() {
   useEffect(() => {
     if (fontsLoaded) {
       Animated.sequence([
+        // Initial logo fade in
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 800,
           useNativeDriver: true,
         }),
-        Animated.delay(1200),
+        Animated.delay(1000),
+        // Logo slide and background color swap
         Animated.parallel([
           Animated.timing(slideAnim, {
             toValue: 1,
@@ -49,13 +51,22 @@ export default function Index() {
             useNativeDriver: false,
           })
         ]),
-        Animated.delay(1500),
-      ]).start(() => {
-        router.replace('/screens/auth/login');
+        Animated.delay(1200),
+      ]).start(async () => {
+        const token = await storage.getToken();
+
+        if (token) {
+          // If token exists, go to home/tabs
+          router.replace('/screens/(home)');
+        } else {
+          // Otherwise, go to login
+          router.replace('/screens/auth/login');
+        }
       });
     }
   }, [fontsLoaded]);
 
+  // Interpolations
   const backgroundColor = bgTransition.interpolate({
     inputRange: [0, 1],
     outputRange: ['#000000', '#FFFFFF'],
@@ -71,12 +82,18 @@ export default function Index() {
     outputRange: [0, 1],
   });
 
+  const brandTextColor = bgTransition.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#FFFFFF', '#000000'],
+  });
+
   return (
-    <Animated.View style={[styles.masterContainer, { backgroundColor }]}>
+    <Animated.View style={{ flex: 1, backgroundColor }}>
       <StatusBar hidden />
 
-      <SafeAreaView style={styles.container}>
-        <View style={styles.logoLockup}>
+      <SafeAreaView className="flex-1 justify-center items-center">
+        <View style={{ width: wp('100%') }} className="flex-row items-center justify-center">
+
           <Animated.View
             style={{
               opacity: fadeAnim,
@@ -85,13 +102,24 @@ export default function Index() {
           >
             <Animated.Image
               source={require('@/assets/images/logo.png')}
-              style={styles.logo}
+              style={{ width: wp('15%'), height: wp('15%') }}
+              className="mr-1"
+              resizeMode="contain"
             />
           </Animated.View>
 
           {fontsLoaded && (
             <Animated.View style={{ opacity: textOpacity }}>
-              <Text style={styles.brandText}>dispatch.io</Text>
+              <Animated.Text
+                style={{
+                  fontFamily: 'Outfit-Bold',
+                  fontSize: wp('10%'),
+                  color: brandTextColor,
+                  letterSpacing: -2
+                }}
+              >
+                dispatch.io
+              </Animated.Text>
             </Animated.View>
           )}
         </View>
@@ -99,31 +127,3 @@ export default function Index() {
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  masterContainer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoLockup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: wp('100%'),
-  },
-  logo: {
-    width: wp('15%'),
-    height: wp('15%'),
-    marginRight: wp('1%'),
-  },
-  brandText: {
-    fontSize: wp('10%'),
-    fontFamily: 'Outfit-Bold',
-    color: '#000000',
-    letterSpacing: -2,
-  },
-});

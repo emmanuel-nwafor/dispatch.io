@@ -30,7 +30,7 @@ interface JobFilterModalProps {
     onApply: (filters: any) => void;
 }
 
-const categories = ['All', 'Design', 'Development', 'Product', 'Marketing', 'Sales', 'Support'];
+const categories = ['All', 'Design', 'Development', 'Product', 'Marketing'];
 const jobTypes = ['Full-time', 'Part-time', 'Freelance', 'Remote', 'Internship'];
 const salaryTiers = [
     { label: '$0 - $50k', value: '0-50' },
@@ -45,42 +45,27 @@ export default function JobFilterModal({ visible, onClose, onApply }: JobFilterM
     const isDark = colorScheme === 'dark';
 
     const [isInternalVisible, setIsInternalVisible] = useState(false);
-
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
     const [selectedSalary, setSelectedSalary] = useState('');
 
     useEffect(() => {
-        if (visible) {
-            setIsInternalVisible(true);
-        }
+        if (visible) setIsInternalVisible(true);
     }, [visible]);
 
     const handleDismiss = () => {
         setIsInternalVisible(false);
-        setTimeout(() => {
-            onClose();
-        }, 400);
+        setTimeout(() => onClose(), 400);
     };
 
     const onGestureEvent = (event: PanGestureHandlerGestureEvent) => {
-        if (event.nativeEvent.translationY > 100) {
-            handleDismiss();
-        }
+        if (event.nativeEvent.translationY > 100) handleDismiss();
     };
 
     const toggleJobType = (type: string) => {
-        if (selectedJobTypes.includes(type)) {
-            setSelectedJobTypes(selectedJobTypes.filter((t) => t !== type));
-        } else {
-            setSelectedJobTypes([...selectedJobTypes, type]);
-        }
-    };
-
-    const handleClearAll = () => {
-        setSelectedCategory('All');
-        setSelectedJobTypes([]);
-        setSelectedSalary('');
+        setSelectedJobTypes(prev =>
+            prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+        );
     };
 
     const handleApply = () => {
@@ -93,80 +78,41 @@ export default function JobFilterModal({ visible, onClose, onApply }: JobFilterM
     };
 
     return (
-        <Modal
-            transparent
-            visible={visible}
-            animationType="none"
-            onRequestClose={handleDismiss}
-        >
+        <Modal transparent visible={visible} animationType="none" onRequestClose={handleDismiss}>
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <View style={styles.container}>
                     <AnimatePresence>
                         {isInternalVisible && (
                             <>
-                                {/* Overlay */}
                                 <MotiView
                                     from={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    transition={{
-                                        type: 'timing',
-                                        duration: 300,
-                                        easing: Easing.out(Easing.quad)
-                                    }}
                                     style={[StyleSheet.absoluteFillObject, styles.overlay]}
                                 >
                                     <Pressable style={{ flex: 1 }} onPress={handleDismiss} />
                                 </MotiView>
 
-                                {/* Bottom Sheet */}
                                 <PanGestureHandler onGestureEvent={onGestureEvent}>
                                     <MotiView
                                         from={{ translateY: hp('100%') }}
                                         animate={{ translateY: 0 }}
                                         exit={{ translateY: hp('100%') }}
-                                        transition={{
-                                            type: 'timing',
-                                            duration: 400,
-                                            easing: Easing.bezier(0.33, 1, 0.68, 1),
-                                        }}
-                                        style={[
-                                            styles.sheet,
-                                            {
-                                                backgroundColor: theme.background,
-                                                paddingBottom: Platform.OS === 'ios' ? hp('4%') : hp('2%'),
-                                            }
-                                        ]}
+                                        transition={{ type: 'timing', duration: 400, easing: Easing.bezier(0.33, 1, 0.68, 1) }}
+                                        style={[styles.sheet, { backgroundColor: theme.background, paddingBottom: Platform.OS === 'ios' ? hp('4%') : hp('2%') }]}
                                     >
                                         <View style={styles.handleContainer}>
-                                            <View style={[
-                                                styles.handle,
-                                                { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
-                                            ]} />
+                                            <View style={[styles.handle, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }]} />
                                         </View>
 
                                         <View style={styles.header}>
-                                            <Text style={[styles.headerTitle, { color: theme.text }]}>
-                                                Search Filter
-                                            </Text>
-                                            <TouchableOpacity
-                                                onPress={handleDismiss}
-                                                activeOpacity={0.7}
-                                                style={[
-                                                    styles.closeButton,
-                                                    { backgroundColor: isDark ? '#1e1e21' : '#f4f4f5' }
-                                                ]}
-                                            >
-                                                <Ionicons name="close" size={wp('6%')} color={theme.text} />
+                                            <Text style={[styles.headerTitle, { color: theme.text }]}>Filters</Text>
+                                            <TouchableOpacity onPress={handleDismiss} style={[styles.closeButton, { backgroundColor: isDark ? '#1e1e21' : '#f4f4f5' }]}>
+                                                <Ionicons name="close" size={wp('5%')} color={theme.text} />
                                             </TouchableOpacity>
                                         </View>
 
-                                        <ScrollView
-                                            showsVerticalScrollIndicator={false}
-                                            contentContainerStyle={styles.scrollContent}
-                                            bounces={false}
-                                        >
-                                            {/* Category Section */}
+                                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                                             <View style={styles.section}>
                                                 <Text style={styles.sectionLabel}>Category</Text>
                                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
@@ -174,95 +120,51 @@ export default function JobFilterModal({ visible, onClose, onApply }: JobFilterM
                                                         <TouchableOpacity
                                                             key={cat}
                                                             onPress={() => setSelectedCategory(cat)}
-                                                            style={[
-                                                                styles.chip,
-                                                                {
-                                                                    backgroundColor: selectedCategory === cat ? theme.brand : 'transparent',
-                                                                    borderColor: selectedCategory === cat ? theme.brand : (isDark ? '#3f3f46' : '#e4e4e7'),
-                                                                }
-                                                            ]}
+                                                            style={[styles.chip, { backgroundColor: selectedCategory === cat ? theme.brand : 'transparent', borderColor: selectedCategory === cat ? theme.brand : (isDark ? '#3f3f46' : '#e4e4e7') }]}
                                                         >
-                                                            <Text style={[
-                                                                styles.chipText,
-                                                                { color: selectedCategory === cat ? '#000' : theme.text }
-                                                            ]}>
-                                                                {cat}
-                                                            </Text>
+                                                            <Text style={[styles.chipText, { color: selectedCategory === cat ? '#fff' : theme.text }]}>{cat}</Text>
                                                         </TouchableOpacity>
                                                     ))}
                                                 </ScrollView>
                                             </View>
 
-                                            {/* Job Type Section */}
                                             <View style={styles.section}>
                                                 <Text style={styles.sectionLabel}>Job Type</Text>
                                                 <View style={styles.grid}>
-                                                    {jobTypes.map((type) => {
-                                                        const isSelected = selectedJobTypes.includes(type);
-                                                        return (
-                                                            <TouchableOpacity
-                                                                key={type}
-                                                                onPress={() => toggleJobType(type)}
-                                                                style={[
-                                                                    styles.chip,
-                                                                    {
-                                                                        backgroundColor: isSelected ? theme.brand : 'transparent',
-                                                                        borderColor: isSelected ? theme.brand : (isDark ? '#3f3f46' : '#e4e4e7'),
-                                                                    }
-                                                                ]}
-                                                            >
-                                                                <Text style={[
-                                                                    styles.chipText,
-                                                                    { color: isSelected ? '#000' : theme.text }
-                                                                ]}>
-                                                                    {type}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        );
-                                                    })}
+                                                    {jobTypes.map((type) => (
+                                                        <TouchableOpacity
+                                                            key={type}
+                                                            onPress={() => toggleJobType(type)}
+                                                            style={[styles.chip, { backgroundColor: selectedJobTypes.includes(type) ? theme.brand : 'transparent', borderColor: selectedJobTypes.includes(type) ? theme.brand : (isDark ? '#3f3f46' : '#e4e4e7') }]}
+                                                        >
+                                                            <Text style={[styles.chipText, { color: selectedJobTypes.includes(type) ? '#fff' : theme.text }]}>{type}</Text>
+                                                        </TouchableOpacity>
+                                                    ))}
                                                 </View>
                                             </View>
 
-                                            {/* Salary Section */}
                                             <View style={styles.section}>
-                                                <Text style={styles.sectionLabel}>Salary Range</Text>
+                                                <Text style={styles.sectionLabel}>Salary Expectation</Text>
                                                 <View style={styles.grid}>
                                                     {salaryTiers.map((tier) => (
                                                         <TouchableOpacity
                                                             key={tier.value}
                                                             onPress={() => setSelectedSalary(tier.value)}
-                                                            style={[
-                                                                styles.chip,
-                                                                {
-                                                                    backgroundColor: selectedSalary === tier.value ? theme.brand : 'transparent',
-                                                                    borderColor: selectedSalary === tier.value ? theme.brand : (isDark ? '#3f3f46' : '#e4e4e7'),
-                                                                }
-                                                            ]}
+                                                            style={[styles.chip, { backgroundColor: selectedSalary === tier.value ? theme.brand : 'transparent', borderColor: selectedSalary === tier.value ? theme.brand : (isDark ? '#3f3f46' : '#e4e4e7') }]}
                                                         >
-                                                            <Text style={[
-                                                                styles.chipText,
-                                                                { color: selectedSalary === tier.value ? '#000' : theme.text }
-                                                            ]}>
-                                                                {tier.label}
-                                                            </Text>
+                                                            <Text style={[styles.chipText, { color: selectedSalary === tier.value ? '#fff' : theme.text }]}>{tier.label}</Text>
                                                         </TouchableOpacity>
                                                     ))}
                                                 </View>
                                             </View>
                                         </ScrollView>
 
-                                        <View style={[
-                                            styles.footer,
-                                            { borderTopColor: isDark ? '#27272a' : '#f4f4f5' }
-                                        ]}>
-                                            <TouchableOpacity onPress={handleClearAll} style={styles.clearButton}>
-                                                <Text style={styles.clearButtonText}>Clear All</Text>
+                                        <View style={[styles.footer, { borderTopColor: isDark ? '#27272a' : '#f4f4f5' }]}>
+                                            <TouchableOpacity onPress={() => { setSelectedCategory('All'); setSelectedJobTypes([]); setSelectedSalary(''); }} style={styles.clearButton}>
+                                                <Text style={styles.clearButtonText}>Reset</Text>
                                             </TouchableOpacity>
-                                            <TouchableOpacity
-                                                onPress={handleApply}
-                                                style={[styles.applyButton, { backgroundColor: theme.brand }]}
-                                            >
-                                                <Text style={styles.applyButtonText}>Apply Filter</Text>
+                                            <TouchableOpacity onPress={handleApply} style={[styles.applyButton, { backgroundColor: theme.brand }]}>
+                                                <Text style={styles.applyButtonText}>Show Results</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </MotiView>
@@ -277,121 +179,24 @@ export default function JobFilterModal({ visible, onClose, onApply }: JobFilterM
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'flex-end',
-    },
-    overlay: {
-        backgroundColor: 'rgba(0,0,0,0.6)',
-    },
-    sheet: {
-        borderTopLeftRadius: wp('10%'),
-        borderTopRightRadius: wp('10%'),
-        maxHeight: hp('85%'),
-        width: '100%',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: -12 },
-                shadowOpacity: 0.15,
-                shadowRadius: 12,
-            },
-            android: {
-                elevation: 24,
-            },
-        }),
-    },
-    handleContainer: {
-        alignItems: 'center',
-        paddingVertical: hp('2%'),
-    },
-    handle: {
-        width: wp('12%'),
-        height: 5,
-        borderRadius: 10,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: wp('8%'),
-        marginBottom: hp('3%'),
-    },
-    headerTitle: {
-        fontSize: wp('6%'),
-        fontFamily: 'Outfit-Bold',
-    },
-    closeButton: {
-        width: wp('10%'),
-        height: wp('10%'),
-        borderRadius: wp('5%'),
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    scrollContent: {
-        paddingHorizontal: wp('8%'),
-        paddingBottom: hp('2%'),
-    },
-    section: {
-        marginBottom: hp('3.5%'),
-    },
-    sectionLabel: {
-        fontSize: wp('3.2%'),
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        color: '#71717a',
-        marginBottom: hp('1.5%'),
-        fontFamily: 'Outfit-Bold',
-    },
-    horizontalScroll: {
-        marginHorizontal: wp('-8%'),
-        paddingHorizontal: wp('8%'),
-    },
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    chip: {
-        paddingHorizontal: wp('5%'),
-        paddingVertical: hp('1.5%'),
-        borderRadius: wp('4%'),
-        borderWidth: 1,
-        marginBottom: 4,
-        marginRight: 7
-    },
-    chipText: {
-        fontFamily: 'Outfit-Medium',
-        fontSize: wp('3.6%'),
-    },
-
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: wp('8%'),
-        paddingVertical: hp('2.5%'),
-        borderTopWidth: 1,
-    },
-    clearButton: {
-        flex: 1,
-    },
-    clearButtonText: {
-        textAlign: 'center',
-        fontFamily: 'Outfit-Bold',
-        color: '#71717a',
-        fontSize: wp('4%'),
-    },
-    applyButton: {
-        flex: 2,
-        paddingVertical: hp('2%'),
-        borderRadius: wp('6%'),
-        marginLeft: wp('4%'),
-    },
-    applyButtonText: {
-        textAlign: 'center',
-        fontFamily: 'Outfit-Bold',
-        color: '#000',
-        fontSize: wp('4%'),
-    },
+    container: { flex: 1, justifyContent: 'flex-end' },
+    overlay: { backgroundColor: 'rgba(0,0,0,0.4)' },
+    sheet: { borderTopLeftRadius: wp('8%'), borderTopRightRadius: wp('8%'), maxHeight: hp('75%'), width: '100%' },
+    handleContainer: { alignItems: 'center', paddingVertical: hp('2%') },
+    handle: { width: wp('10%'), height: 4, borderRadius: 10 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: wp('8%'), marginBottom: hp('2%') },
+    headerTitle: { fontSize: wp('5.5%'), fontFamily: 'Outfit-Bold' },
+    closeButton: { width: wp('9%'), height: wp('9%'), borderRadius: wp('5%'), alignItems: 'center', justifyContent: 'center' },
+    scrollContent: { paddingHorizontal: wp('8%'), paddingBottom: hp('2%') },
+    section: { marginBottom: hp('3%') },
+    sectionLabel: { fontSize: wp('3.5%'), color: '#71717a', marginBottom: hp('1.5%'), fontFamily: 'Outfit-Bold' },
+    horizontalScroll: { marginHorizontal: wp('-8%'), paddingHorizontal: wp('8%') },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { paddingHorizontal: wp('4%'), paddingVertical: hp('1.2%'), borderRadius: wp('3%'), borderWidth: 1, marginRight: 6 },
+    chipText: { fontFamily: 'Outfit-Medium', fontSize: wp('3.4%') },
+    footer: { flexDirection: 'row', paddingHorizontal: wp('8%'), paddingVertical: hp('2%'), borderTopWidth: 1 },
+    clearButton: { flex: 1, justifyContent: 'center' },
+    clearButtonText: { fontFamily: 'Outfit-Bold', color: '#71717a', fontSize: wp('4%') },
+    applyButton: { flex: 2, paddingVertical: hp('2%'), borderRadius: wp('4%'), alignItems: 'center' },
+    applyButtonText: { fontFamily: 'Outfit-Bold', color: '#fff', fontSize: wp('4%') },
 });

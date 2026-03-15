@@ -2,6 +2,8 @@ import { storage } from '../utils/storage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:5000/api/v1';
 
+// Interfaces
+
 export interface UserDetails {
     autoApply: {
         enabled: boolean;
@@ -19,11 +21,48 @@ export interface UserDetails {
 }
 
 export interface User {
-    id: string;
+    _id: string;
     email: string;
     role: string;
     isProfileCompleted: boolean;
-    details: UserDetails;
+    profile: UserDetails;
+    appliedJobsCount?: number;
+}
+
+export interface RecruiterProfile {
+    companyName: string;
+    companyWebsite: string;
+    industry: string;
+    companySize: string;
+    location: string;
+    accountabilityScore: number;
+    verifiedCompany: boolean;
+}
+
+export interface Job {
+    _id: string;
+    title: string;
+    companyName: string;
+    description: string;
+    location: string;
+    jobType: string;
+    salaryRange: {
+        min: number;
+        max: number;
+        currency: string;
+    };
+    skillsRequired: string[];
+    experienceLevel: string;
+    applicantsCount: number;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+    recruiter: {
+        _id: string;
+        email: string;
+        profile: UserDetails;
+        recruiterProfile: RecruiterProfile;
+    };
 }
 
 export interface AuthResponse {
@@ -32,13 +71,41 @@ export interface AuthResponse {
     user: User;
 }
 
+export interface JobsResponse {
+    success: boolean;
+    count: number;
+    pagination: {
+        totalJobs: number;
+        currentPage: number;
+        totalPages: number;
+    };
+    jobs: Job[];
+}
+
+export interface Reel {
+    _id: string;
+    title: string;
+    description: string;
+    type: string;
+    tags: string[];
+    creatorId: string;
+    videoUrl: string;
+    thumbnailUrl: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Request Helper
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = await storage.getToken();
+
+    const isFormData = options.body instanceof FormData;
 
     const config = {
         ...options,
         headers: {
-            'Content-Type': 'application/json',
+            ...(!isFormData && { 'Content-Type': 'application/json' }),
             ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...options.headers,
         },
@@ -61,6 +128,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
 }
 
+// API Objects
+
 export const auth = {
     sendOtp: (email: string) => {
         return request<{ success: boolean; message: string }>('/auth/send-otp', {
@@ -74,10 +143,41 @@ export const auth = {
             body: JSON.stringify({ email, password }),
         });
     },
+};
+
+export const user = {
+    completeProfile: (profileData: any) => {
+        return request<{ success: boolean; user: User }>('/users/complete-profile', {
+            method: 'PUT',
+            body: JSON.stringify(profileData),
+        });
+    },
+    uploadAvatar: (formData: FormData) => {
+        return request<{ success: boolean; imageUrl: string; user: User }>('/users/upload', {
+            method: 'POST',
+            body: formData,
+        });
+    },
     getMe: () => {
-        return request<{ success: boolean; user: User }>('/auth/me', {
+        return request<{ success: boolean; user: User }>('/users/me', {
             method: 'GET',
         });
     }
 };
 
+export const jobs = {
+    getAll: () => {
+        return request<JobsResponse>('/all-jobs', {
+            method: 'GET',
+        });
+    }
+};
+
+export const reels = {
+    create: (formData: FormData) => {
+        return request<{ success: boolean; message: string; data: any }>('/reels', {
+            method: 'POST',
+            body: formData,
+        });
+    }
+};

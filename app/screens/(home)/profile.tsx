@@ -1,5 +1,5 @@
 import { Colors } from '@/app/constants/Colors';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
@@ -10,15 +10,17 @@ import {
     TouchableOpacity,
     View,
     useColorScheme,
+    ActivityIndicator,
     Platform,
-    ActivityIndicator
+    Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import {
     heightPercentageToDP as hp,
     widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { auth as authApi } from '@/app/data/api';
+import { user as userApi, User } from '@/app/data/api';
 import { storage } from '@/app/utils/storage';
 
 interface MenuItemProps {
@@ -40,31 +42,22 @@ const MenuItem = ({ icon, label, onPress, color, isLast, isDestructive }: MenuIt
             onPress={onPress}
             activeOpacity={0.7}
             style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 16,
                 borderBottomWidth: isLast ? 0 : 1,
                 borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                height: hp('7.5%')
             }}
+            className="flex-row items-center px-5"
         >
-            <View style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                backgroundColor: isDestructive ? 'rgba(239, 68, 68, 0.1)' : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 16,
-            }}>
+            <View
+                style={{ backgroundColor: isDestructive ? 'rgba(239, 68, 68, 0.1)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') }}
+                className="w-10 h-10 rounded-2xl items-center justify-center mr-4"
+            >
                 <Ionicons name={icon as any} size={20} color={isDestructive ? '#ef4444' : (color || theme.text)} />
             </View>
-            <Text style={{
-                flex: 1,
-                fontFamily: 'Outfit-Medium',
-                fontSize: 15,
-                color: isDestructive ? '#ef4444' : theme.text,
-            }}>
+            <Text
+                style={{ fontFamily: 'Outfit-Medium', color: isDestructive ? '#ef4444' : theme.text }}
+                className="flex-1 text-[15px]"
+            >
                 {label}
             </Text>
             <Ionicons name="chevron-forward" size={18} color={isDark ? '#3f3f46' : '#d4d4d8'} />
@@ -78,233 +71,213 @@ export default function ProfileScreen() {
     const isDark = colorScheme === 'dark';
     const router = useRouter();
 
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchMe = async () => {
-            try {
-                const res = await authApi.getMe();
-                if (res.success) {
-                    setUser(res.user);
-                }
-            } catch (err) {
-                console.error("Failed to fetch user profile", err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const [uploading, setUploading] = useState(false);
 
-        fetchMe();
+    const pickImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission denied', 'We need access to your gallery to change your profile picture.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                uploadImage(result.assets[0].uri);
+            }
+        } catch (error) {
+            console.error("Image pick error:", error);
+        }
+    };
+
+    const uploadImage = async (uri: string) => {
+        setUploading(true);
+        try {
+            const formData = new FormData();
+
+            // On React Native, we need to format the file object for FormData
+            const filename = uri.split('/').pop();
+            const match = /\.(\w+)$/.exec(filename || '');
+            const type = match ? `image/${match[1]}` : `image`;
+
+            formData.append('avatar', {
+                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+                name: filename,
+                type,
+            } as any);
+
+            const res = await userApi.uploadAvatar(formData);
+            if (res.success) {
+                // Update local user state with new image URL
+                if (user) {
+                    setUser({
+                        ...user,
+                        profile: {
+                            ...user.profile,
+                            resumeUrl: res.imageUrl // Backend currently uses resumeUrl as placeholder
+                        }
+                    });
+                }
+                Alert.alert('Success', 'Profile picture updated successfully');
+            }
+        } catch (error: any) {
+            console.error("Upload error:", error);
+            Alert.alert('Upload failed', error.message || 'Something went wrong');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const fetchProfile = async () => {
+        try {
+            const res = await userApi.getMe();
+            if (res.success) {
+                setUser(res.user);
+            }
+        } catch (err) {
+            console.error("Profile Fetch Error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProfile();
     }, []);
 
     const handleLogout = async () => {
         await storage.clearAll();
-        router.replace('/screens/auth/login' as any);
+        router.replace('/screens/auth/login');
     };
 
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={theme.brand} />
+            <View style={{ backgroundColor: theme.background }} className="flex-1 justify-center items-center">
+                <ActivityIndicator size="large" color="#006400" />
             </View>
         );
     }
 
     if (!user) {
         return (
-            <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: theme.text, fontFamily: 'Outfit-Medium' }}>Failed to load profile.</Text>
-                <TouchableOpacity onPress={() => router.replace('/screens/auth/login' as any)} className="mt-4 px-6 py-2 bg-zinc-800 rounded-full">
-                    <Text className="text-white" style={{ fontFamily: 'Outfit-Bold' }}>Log In Again</Text>
+            <View style={{ backgroundColor: theme.background }} className="flex-1 justify-center items-center p-6">
+                <Text style={{ color: theme.text, fontFamily: 'Outfit-Medium' }}>Session expired</Text>
+                <TouchableOpacity
+                    onPress={() => router.replace('/screens/auth/login')}
+                    className="mt-4 px-8 py-3 bg-zinc-900 rounded-2xl"
+                >
+                    <Text className="text-white" style={{ fontFamily: 'Outfit-Bold' }}>Login</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
-    const stats = [
-        { label: 'Applied', value: '0', icon: 'send-outline', color: theme.brand },
-        { label: 'Matches', value: '0', icon: 'sparkles-outline', color: '#3b82f6' },
-        { label: 'Views', value: '0', icon: 'eye-outline', color: '#8b5cf6' },
-    ];
-
-    const fullName = user.profile?.fullName || 'Anonymous User';
-    const headline = user.profile?.headline || (user.role === 'recruiter' ? 'Recruiter' : 'Job Seeker');
+    // Mapping values from your specific JSON structure
+    const fullName = user.profile?.fullName || 'Anonymous';
+    const headline = user.role === 'seeker' ? 'Job Seeker' : 'Recruiter';
     const location = user.profile?.location ? ` • ${user.profile.location}` : '';
-    const avatar = user.profile?.profileImage || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const avatar = user.profile?.resumeUrl || 'https://ui-avatars.com/api/?name=' + fullName.replace(' ', '+') + '&background=random';
+
+    const stats = [
+        { label: 'Applied', value: String(user.appliedJobsCount || 0), icon: 'send-outline', color: theme.brand },
+        { label: 'Score', value: user.profile?.autoApply?.minMatchScore + '%' || '0%', icon: 'ribbon-outline', color: '#3b82f6' },
+        { label: 'Exp', value: user.profile?.experienceYear + 'y' || '0y', icon: 'time-outline', color: '#8b5cf6' },
+    ];
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
             <StatusBar style={isDark ? "light" : "dark"} />
 
-            <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} className='mb-20'>
+            <SafeAreaView className="flex-1" edges={['top']}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: hp('10%') }}>
+
                     {/* Header */}
-                    <View style={{ paddingHorizontal: 24, paddingTop: 10, marginBottom: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 28 }}>
-                            Profile
-                        </Text>
+                    <View style={{ paddingHorizontal: wp('6%'), paddingTop: hp('2%') }} className="mb-8 flex-row justify-between items-center">
+                        <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: wp('7.5%') }}>Profile</Text>
                         <TouchableOpacity
-                            onPress={() => router.push({ pathname: '/screens/profile/[id]', params: { id: user.id } } as any)}
-                            style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: theme.brand, borderRadius: 20 }}
+                            onPress={() => router.push({ pathname: '/screens/profile/[id]', params: { id: user._id } } as any)}
+                            style={{ backgroundColor: theme.brand }}
+                            className="px-5 py-2.5 rounded-2xl shadow-sm"
                         >
-                            <Text style={{ fontFamily: 'Outfit-Bold', color: '#fff', fontSize: 13 }}>View Public</Text>
+                            <Text style={{ fontFamily: 'Outfit-Bold' }} className="text-white text-[13px]">Public View</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* Hero Section */}
-                    <View style={{ alignItems: 'center', paddingHorizontal: 24, marginBottom: 32 }}>
-                        <TouchableOpacity activeOpacity={0.9} style={{ position: 'relative', marginBottom: 16 }}>
-                            <View style={{
-                                width: 110,
-                                height: 110,
-                                borderRadius: 55,
-                                borderWidth: 3,
-                                borderColor: theme.brand,
-                                padding: 3,
-                                backgroundColor: theme.background,
-                            }}>
-                                <Image
-                                    source={{ uri: avatar }}
-                                    style={{ width: '100%', height: '100%', borderRadius: 50 }}
-                                />
+                    {/* Profile Card */}
+                    <View style={{ paddingHorizontal: wp('6%') }} className="items-center mb-8">
+                        <View className="relative mb-5">
+                            <View
+                                style={{ width: wp('30%'), height: wp('30%'), borderColor: theme.brand, backgroundColor: theme.background }}
+                                className="rounded-full border-[3px] p-1.5 shadow-xl"
+                            >
+                                {uploading ? (
+                                    <View className="w-full h-full rounded-full bg-black/30 items-center justify-center absolute z-10">
+                                        <ActivityIndicator color="#fff" />
+                                    </View>
+                                ) : null}
+                                <Image source={{ uri: avatar }} className="w-full h-full rounded-full bg-zinc-200" />
                             </View>
-                            <View style={{
-                                position: 'absolute',
-                                bottom: 0,
-                                right: 0,
-                                backgroundColor: theme.text,
-                                width: 34,
-                                height: 34,
-                                borderRadius: 17,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderWidth: 3,
-                                borderColor: theme.background,
-                            }}>
+                            <TouchableOpacity
+                                onPress={pickImage}
+                                disabled={uploading}
+                                style={{ backgroundColor: theme.text, borderColor: theme.background }}
+                                className="absolute bottom-1 right-1 w-9 h-9 rounded-full items-center justify-center border-[4px]"
+                            >
                                 <Ionicons name="camera" size={16} color={theme.background} />
-                            </View>
-                        </TouchableOpacity>
+                            </TouchableOpacity>
+                        </View>
 
-                        <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 24, marginBottom: 4 }}>
-                            {fullName}
-                        </Text>
-                        <Text style={{ fontFamily: 'Outfit-Medium', color: '#71717a', fontSize: 14 }}>
-                            {headline}{location}
-                        </Text>
+                        <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }} className="text-2xl mb-1">{fullName}</Text>
+                        <Text style={{ fontFamily: 'Outfit-Medium' }} className="text-zinc-500 text-[15px]">{headline}{location}</Text>
                     </View>
 
-                    {/* Stats Section */}
-                    <View style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        paddingHorizontal: 24,
-                        marginBottom: 32,
-                    }}>
+                    {/* Stats */}
+                    <View style={{ paddingHorizontal: wp('6%') }} className="flex-row justify-between mb-9">
                         {stats.map((item, index) => (
                             <View
                                 key={index}
                                 style={{
-                                    width: (wp('100%') - 48 - 24) / 3,
-                                    backgroundColor: isDark ? '#111111' : '#f9f9f9',
-                                    borderRadius: 24,
-                                    padding: 16,
-                                    alignItems: 'center',
-                                    borderWidth: 1,
+                                    width: wp('27%'),
+                                    backgroundColor: isDark ? '#111111' : '#fff',
                                     borderColor: isDark ? '#27272a' : '#f4f4f5',
                                 }}
+                                className="rounded-[32px] py-5 items-center border shadow-sm"
                             >
-                                <Ionicons name={item.icon as any} size={20} color={item.color} style={{ marginBottom: 8 }} />
-                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 18, marginBottom: 2 }}>
-                                    {item.value}
-                                </Text>
-                                <Text style={{ fontFamily: 'Outfit-Medium', color: '#71717a', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    {item.label}
-                                </Text>
+                                <Ionicons name={item.icon as any} size={22} color={item.color} className="mb-2" />
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }} className="text-lg">{item.value}</Text>
+                                <Text style={{ fontFamily: 'Outfit-Medium' }} className="text-zinc-400 text-[10px] uppercase tracking-widest mt-0.5">{item.label}</Text>
                             </View>
                         ))}
                     </View>
 
-                    {/* Menu Groups */}
-                    <View style={{ paddingHorizontal: 24 }}>
-                        {/* Account Section */}
-                        <Text style={{
-                            fontFamily: 'Outfit-Bold',
-                            color: '#71717a',
-                            fontSize: 12,
-                            textTransform: 'uppercase',
-                            letterSpacing: 1,
-                            marginBottom: 12,
-                            marginLeft: 4,
-                        }}>
-                            Account Settings
-                        </Text>
-                        <View style={{
-                            backgroundColor: isDark ? '#111111' : '#fff',
-                            borderRadius: 28,
-                            borderWidth: 1,
-                            borderColor: isDark ? '#27272a' : '#f4f4f5',
-                            overflow: 'hidden',
-                            marginBottom: 28,
-                        }}>
-                            <MenuItem icon="person-outline" label="Personal Information" />
-                            <MenuItem icon="document-text-outline" label="Resume & Portfolio" />
-                            <MenuItem icon="shield-checkmark-outline" label="Security & Privacy" isLast />
+                    {/* Settings List */}
+                    <View style={{ paddingHorizontal: wp('6%') }}>
+                        <SectionLabel title="Account" />
+                        <View
+                            style={{ backgroundColor: isDark ? '#111111' : '#fff', borderColor: isDark ? '#27272a' : '#f4f4f5' }}
+                            className="rounded-[32px] border overflow-hidden mb-8 shadow-sm"
+                        >
+                            <MenuItem icon="person-outline" label="Personal Details" />
+                            <MenuItem icon="document-text-outline" label="Experience & Skills" />
+                            <MenuItem icon="settings-outline" label="Preferences" isLast />
                         </View>
 
-                        {/* App Section */}
-                        <Text style={{
-                            fontFamily: 'Outfit-Bold',
-                            color: '#71717a',
-                            fontSize: 12,
-                            textTransform: 'uppercase',
-                            letterSpacing: 1,
-                            marginBottom: 12,
-                            marginLeft: 4,
-                        }}>
-                            Preferences
-                        </Text>
-                        <View style={{
-                            backgroundColor: isDark ? '#111111' : '#fff',
-                            borderRadius: 28,
-                            borderWidth: 1,
-                            borderColor: isDark ? '#27272a' : '#f4f4f5',
-                            overflow: 'hidden',
-                            marginBottom: 28,
-                        }}>
-                            <MenuItem icon="notifications-outline" label="Notifications" />
-                            <MenuItem icon="briefcase-outline" label="Job Alerts" />
-                            <MenuItem icon="color-palette-outline" label="Appearance" isLast />
-                        </View>
-
-                        {/* Support & Logout */}
-                        <Text style={{
-                            fontFamily: 'Outfit-Bold',
-                            color: '#71717a',
-                            fontSize: 12,
-                            textTransform: 'uppercase',
-                            letterSpacing: 1,
-                            marginBottom: 12,
-                            marginLeft: 4,
-                        }}>
-                            More
-                        </Text>
-                        <View style={{
-                            backgroundColor: isDark ? '#111111' : '#fff',
-                            borderRadius: 28,
-                            borderWidth: 1,
-                            borderColor: isDark ? '#27272a' : '#f4f4f5',
-                            overflow: 'hidden',
-                        }}>
-                            <MenuItem icon="help-circle-outline" label="Help Center" />
-                            <MenuItem icon="information-circle-outline" label="About Dispatch.io" />
-                            <MenuItem
-                                icon="log-out-outline"
-                                label="Log Out"
-                                isDestructive
-                                isLast
-                                onPress={handleLogout}
-                            />
+                        <SectionLabel title="Support" />
+                        <View
+                            style={{ backgroundColor: isDark ? '#111111' : '#fff', borderColor: isDark ? '#27272a' : '#f4f4f5' }}
+                            className="rounded-[32px] border overflow-hidden shadow-sm"
+                        >
+                            <MenuItem icon="help-buoy-outline" label="Help & Feedback" />
+                            <MenuItem icon="log-out-outline" label="Sign Out" isDestructive isLast onPress={handleLogout} />
                         </View>
                     </View>
                 </ScrollView>
@@ -312,3 +285,12 @@ export default function ProfileScreen() {
         </View>
     );
 }
+
+const SectionLabel = ({ title }: { title: string }) => (
+    <Text
+        style={{ fontFamily: 'Outfit-Bold' }}
+        className="text-zinc-400 text-[11px] uppercase tracking-[2px] mb-4 ml-2"
+    >
+        {title}
+    </Text>
+);

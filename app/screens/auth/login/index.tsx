@@ -32,7 +32,6 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
 
     const handleLogin = async () => {
         if (!email.trim() || !password.trim()) {
@@ -52,16 +51,13 @@ export default function Login() {
             if (response.success) {
                 await storage.saveToken(response.token);
                 await storage.saveUser(response.user);
-
-                // Trigger the Modal instead of immediate navigation
-                setModalVisible(true);
-
                 Toast.show({
                     type: 'success',
                     text1: 'Login Successful',
                     text2: 'Welcome back to dispatch.io!'
                 });
 
+                console.log(response.token, response.user)
                 router.replace('/screens/(home)');
             }
         } catch (error: any) {

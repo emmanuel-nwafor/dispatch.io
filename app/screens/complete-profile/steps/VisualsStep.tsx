@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
+import { user as userApi } from '@/app/data/api';
 
 interface VisualsStepProps {
     formData: any;
@@ -13,6 +14,46 @@ interface VisualsStepProps {
 }
 
 export default function VisualsStep({ formData, setFormData, theme, isDark }: VisualsStepProps) {
+    const [uploading, setUploading] = React.useState<{ profile?: boolean, cover?: boolean }>({});
+
+    const uploadFile = async (uri: string, type: 'profile' | 'cover') => {
+        setUploading(prev => ({ ...prev, [type]: true }));
+        try {
+            const formDataUpload = new FormData();
+            const filename = uri.split('/').pop();
+            const match = /\.(\w+)$/.exec(filename || '');
+            const fileType = match ? `image/${match[1]}` : `image`;
+
+            formDataUpload.append('avatar', {
+                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+                name: filename,
+                type: fileType,
+            } as any);
+
+            const res = await userApi.uploadAvatar(formDataUpload);
+            if (res.success) {
+                setFormData({
+                    ...formData,
+                    [type === 'profile' ? 'profileImage' : 'coverImage']: res.imageUrl
+                });
+                Toast.show({
+                    type: 'success',
+                    text1: 'Upload Successful',
+                    text2: `${type === 'profile' ? 'Profile picture' : 'Banner'} updated.`
+                });
+            }
+        } catch (error: any) {
+            console.error("Upload error:", error);
+            Toast.show({
+                type: 'error',
+                text1: 'Upload Failed',
+                text2: error.message || 'Something went wrong.'
+            });
+        } finally {
+            setUploading(prev => ({ ...prev, [type]: false }));
+        }
+    };
+
     const pickMedia = async (type: 'profile' | 'cover') => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -22,13 +63,8 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
         });
 
         if (!result.canceled) {
-            setFormData({ ...formData, [type === 'profile' ? 'profileImage' : 'coverImage']: result.assets[0].uri });
+            uploadFile(result.assets[0].uri, type);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Toast.show({
-                type: 'success',
-                text1: 'Upload Successful',
-                text2: `${type === 'profile' ? 'Profile picture' : 'Banner'} updated.`
-            });
         }
     };
 
@@ -51,8 +87,14 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
                         <Image source={{ uri: formData.coverImage }} className="w-full h-full" />
                     ) : (
                         <View className="items-center justify-center h-full">
-                            <Feather name="image" size={30} color={theme.tabIconDefault} />
-                            <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Medium] mt-2">Add Banner</Text>
+                            {uploading.cover ? (
+                                <ActivityIndicator color={theme.brand} />
+                            ) : (
+                                <>
+                                    <Feather name="image" size={30} color={theme.tabIconDefault} />
+                                    <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Medium] mt-2">Add Banner</Text>
+                                </>
+                            )}
                         </View>
                     )}
                     <View style={styles.editOverlay} className="bg-black/20">
@@ -65,6 +107,7 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
                     <TouchableOpacity
                         activeOpacity={0.9}
                         onPress={() => pickMedia('profile')}
+                        disabled={uploading.profile}
                         style={[styles.avatarContainer, { borderColor: theme.background, backgroundColor: isDark ? '#27272a' : '#fff' }]}
                         className="shadow-xl"
                     >
@@ -72,11 +115,19 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
                             <Image source={{ uri: formData.profileImage }} className="w-full h-full" />
                         ) : (
                             <View className="items-center justify-center h-full">
-                                <Feather name="user" size={40} color={theme.tabIconDefault} />
+                                {uploading.profile ? (
+                                    <ActivityIndicator color={theme.brand} />
+                                ) : (
+                                    <Feather name="user" size={40} color={theme.tabIconDefault} />
+                                )}
                             </View>
                         )}
                         <View style={styles.avatarEditBadge} className="bg-brand border-2 border-zinc-900 dark:border-black">
-                            <Ionicons name="add" size={16} color="black" />
+                            {uploading.profile ? (
+                                <ActivityIndicator size="small" color="black" />
+                            ) : (
+                                <Ionicons name="add" size={16} color="black" />
+                            )}
                         </View>
                     </TouchableOpacity>
                 </View>
