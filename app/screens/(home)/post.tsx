@@ -69,6 +69,8 @@ export default function PostScreen() {
         setSelectedMedia(updatedMedia);
     };
 
+    const [uploadProgress, setUploadProgress] = useState(0);
+
     const handlePost = async () => {
         if (!postContent.trim() && selectedMedia.length === 0) {
             Alert.alert("Empty Post", "Please add some text or media to share.");
@@ -76,37 +78,62 @@ export default function PostScreen() {
         }
 
         setLoading(true);
+        setUploadProgress(0);
         try {
             const hasVideo = selectedMedia.some(m => m.type === 'video');
-            const formData = new FormData();
 
             if (hasVideo) {
-                // Handle as Reel
+                // Handle as Reel via Mux Direct Upload
                 const videoAsset = selectedMedia.find(m => m.type === 'video');
                 if (!videoAsset) throw new Error("Video asset not found");
 
-                formData.append('title', postContent.slice(0, 50) || 'New Reel');
-                formData.append('description', postContent);
-                formData.append('type', 'seeker_pitch'); // Default type
+                // 1. Get Upload URL
+                const { data: { uploadUrl, uploadId } } = await reelsApi.getUploadUrl();
 
-                const filename = videoAsset.uri.split('/').pop() || 'reel.mp4';
-                const match = /\.(\w+)$/.exec(filename);
-                const fileType = match ? `video/${match[1]}` : `video/mp4`;
+                // 2. Direct Binary Upload to Mux via XHR (for progress)
+                const response = await fetch(videoAsset.uri);
+                const blob = await response.blob();
 
-                formData.append('postImage', {
-                    uri: Platform.OS === 'ios' ? videoAsset.uri.replace('file://', '') : videoAsset.uri,
-                    name: filename,
-                    type: fileType,
-                } as any);
+                await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('PUT', uploadUrl);
+                    xhr.setRequestHeader('Content-Type', videoAsset.type || 'video/mp4');
 
-                const res = await reelsApi.create(formData);
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            const progress = Math.round((event.loaded / event.total) * 100);
+                            setUploadProgress(progress);
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(xhr.response);
+                        } else {
+                            reject(new Error(`Upload failed with status ${xhr.status}`));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error("Mux upload failed"));
+                    xhr.send(blob);
+                });
+
+                // 3. Create Reel Record in our Backend
+                const res = await reelsApi.create({
+                    title: postContent.slice(0, 50) || 'New Reel',
+                    description: postContent,
+                    type: 'seeker_pitch',
+                    muxUploadId: uploadId,
+                });
+
                 if (res.success) {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    Alert.alert("Success", "Reel uploaded successfully!");
+                    Alert.alert("Success", "Reel uploaded and processing!");
                     router.back();
                 }
             } else {
-                // Handle as Post
+                // Handle as Post (Images/Text) via Cloudinary
+                const formData = new FormData();
                 formData.append('content', postContent);
 
                 selectedMedia.forEach((asset, index) => {
@@ -133,6 +160,7 @@ export default function PostScreen() {
             Alert.alert("Error", error.message || "Failed to share post. Please try again.");
         } finally {
             setLoading(false);
+            setUploadProgress(0);
         }
     };
 
@@ -223,9 +251,38 @@ export default function PostScreen() {
                                             <Ionicons name="close-circle" size={20} color="#fff" />
                                         </TouchableOpacity>
                                         {asset.type === 'video' && (
-                                            <View style={{ position: 'absolute', bottom: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4, paddingHorizontal: 6 }}>
-                                                <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'Outfit-Bold' }}>VIDEO</Text>
-                                            </View>
+                                            <>
+                                                <View style={{ position: 'absolute', bottom: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4, paddingHorizontal: 6 }}>
+                                                    <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'Outfit-Bold' }}>VIDEO</Text>
+                                                </View>
+                                                {loading && uploadProgress > 0 && (
+                                                    <View style={{
+                                                        position: 'absolute',
+                                                        inset: 0,
+                                                        backgroundColor: 'rgba(0,0,0,0.4)',
+                                                        borderRadius: 16,
+                                                        justifyContent: 'center',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                        <ActivityIndicator size="small" color={theme.brand} />
+                                                        <Text style={{ color: '#fff', fontFamily: 'Outfit-Bold', marginTop: 8 }}>{uploadProgress}%</Text>
+                                                        <View style={{
+                                                            width: '80%',
+                                                            height: 4,
+                                                            backgroundColor: 'rgba(255,255,255,0.3)',
+                                                            borderRadius: 2,
+                                                            marginTop: 12,
+                                                            overflow: 'hidden'
+                                                        }}>
+                                                            <View style={{
+                                                                width: `${uploadProgress}%`,
+                                                                height: '100%',
+                                                                backgroundColor: theme.brand
+                                                            }} />
+                                                        </View>
+                                                    </View>
+                                                )}
+                                            </>
                                         )}
                                     </View>
                                 ))}

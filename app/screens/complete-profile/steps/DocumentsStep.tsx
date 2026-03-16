@@ -1,73 +1,81 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
-import Toast from 'react-native-toast-message';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
-interface DocumentsStepProps {
-    formData: any;
-    setFormData: (data: any) => void;
-    theme: any;
-    inputStyle: any;
-}
-
-export default function DocumentsStep({ formData, setFormData, theme, inputStyle }: DocumentsStepProps) {
+export default function DocumentsStep({ formData, setFormData, theme, inputStyle }: any) {
     const pickResume = async () => {
         const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
         if (!result.canceled) {
             setFormData({ ...formData, resume: { name: result.assets[0].name, uri: result.assets[0].uri } });
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Toast.show({
-                type: 'success',
-                text1: 'Resume Uploaded',
-                text2: result.assets[0].name
-            });
         }
     };
 
     return (
         <View>
-            <View className="mb-8">
-                <Text style={{ color: theme.text }} className="text-3xl font-[Outfit-Bold] mb-2">Presence</Text>
-                <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Medium] text-lg">Where else do you exist?</Text>
+            <View style={{ marginBottom: hp('4%') }}>
+                <Text style={{ color: theme.text, fontSize: wp('8%'), fontFamily: 'Outfit-Bold' }}>Presence</Text>
+                <Text style={{ color: '#8e8e93', fontSize: wp('4.2%'), fontFamily: 'Outfit-Medium', marginTop: 5 }}>
+                    Showcase your professional footprint.
+                </Text>
             </View>
 
             <TouchableOpacity
                 onPress={pickResume}
-                style={[inputStyle, { borderStyle: 'dashed', borderWidth: 2, borderColor: theme.brand }]}
-                className="w-full h-44 rounded-[40px] items-center justify-center p-8 mb-8"
+                activeOpacity={0.8}
+                style={[
+                    inputStyle,
+                    {
+                        borderStyle: 'dashed',
+                        borderWidth: 2,
+                        borderColor: theme.brand,
+                        height: hp('22%'),
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginBottom: hp('4%')
+                    }
+                ]}
             >
-                <MaterialCommunityIcons
-                    name={formData.resume ? "file-check" : "file-pdf-box"}
-                    size={48}
-                    color={formData.resume ? theme.brand : '#ef4444'}
-                    className="mb-2"
-                />
-                <Text style={{ color: theme.text }} className="font-[Outfit-Bold] text-lg text-center">
+                <View style={{ backgroundColor: `${theme.brand}20`, padding: 20, borderRadius: 100, marginBottom: 15 }}>
+                    <MaterialCommunityIcons
+                        name={formData.resume ? "file-check" : "cloud-upload-outline"}
+                        size={wp('10%')}
+                        color={theme.brand}
+                    />
+                </View>
+                <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold', fontSize: wp('4.5%') }}>
                     {formData.resume ? formData.resume.name : "Upload Resume (PDF)"}
+                </Text>
+                <Text style={{ color: '#8e8e93', fontFamily: 'Outfit-Medium', fontSize: wp('3.5%'), marginTop: 5 }}>
+                    Max file size: 5MB
                 </Text>
             </TouchableOpacity>
 
-            <Text style={{ color: theme.text }} className="font-[Outfit-Bold] mb-3 ml-1">Personal Website</Text>
-            <TextInput
-                className="p-5 rounded-3xl border font-[Outfit-Medium] mb-6"
-                style={inputStyle}
-                placeholder="https://yourwork.com"
-                placeholderTextColor={theme.tabIconDefault}
-                value={formData.portfolioUrl}
-                onChangeText={(t) => setFormData({ ...formData, portfolioUrl: t })}
-            />
-
-            <Text style={{ color: theme.text }} className="font-[Outfit-Bold] mb-3 ml-1">LinkedIn</Text>
-            <TextInput
-                className="p-5 rounded-3xl border font-[Outfit-Medium] mb-6"
-                style={inputStyle}
-                placeholder="linkedin.com/in/username"
-                placeholderTextColor={theme.tabIconDefault}
-                value={formData.linkedInUrl}
-                onChangeText={(t) => setFormData({ ...formData, linkedInUrl: t })}
-            />
+            <View style={{ gap: hp('2.5%') }}>
+                <View>
+                    <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold', marginBottom: 8 }}>Portfolio Website</Text>
+                    <TextInput
+                        style={[inputStyle, { height: hp('7%'), paddingHorizontal: 15, fontFamily: 'Outfit-Medium' }]}
+                        placeholder="https://yourwork.com"
+                        placeholderTextColor="#52525b"
+                        value={formData.portfolioUrl}
+                        onChangeText={(t) => setFormData({ ...formData, portfolioUrl: t })}
+                    />
+                </View>
+                <View>
+                    <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold', marginBottom: 8 }}>LinkedIn Profile</Text>
+                    <TextInput
+                        style={[inputStyle, { height: hp('7%'), paddingHorizontal: 15, fontFamily: 'Outfit-Medium' }]}
+                        placeholder="linkedin.com/in/username"
+                        placeholderTextColor="#52525b"
+                        value={formData.linkedInUrl}
+                        onChangeText={(t) => setFormData({ ...formData, linkedInUrl: t })}
+                    />
+                </View>
+            </View>
         </View>
     );
 }

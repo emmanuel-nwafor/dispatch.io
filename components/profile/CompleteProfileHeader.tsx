@@ -1,35 +1,146 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { MotiView, AnimatePresence } from 'moti';
 
-const CompleteProfileHeader = ({ title, onBack, showBack }: { title: string, onBack: () => void, showBack: boolean }) => {
+interface HeaderProps {
+    title: string;
+    onBack: () => void;
+    currentStep: number;
+    totalSteps: number;
+    theme: any;
+}
+
+const CompleteProfileHeader = ({ title, onBack, currentStep, totalSteps, theme }: HeaderProps) => {
     const router = useRouter();
     const isDark = useColorScheme() === 'dark';
 
+    const isSkippable = currentStep > 1;
+
     return (
-        <View className="flex-row items-center justify-between py-4" style={{ paddingHorizontal: wp('5%') }}>
-            <View className="flex-row items-center">
-                {showBack ? (
-                    <TouchableOpacity onPress={onBack} className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                        <Ionicons name="arrow-back" size={22} color={isDark ? 'white' : 'black'} />
-                    </TouchableOpacity>
-                ) : (
-                    <View className="w-10" />
-                )}
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            {/* Left Section: Back Button */}
+            <View style={styles.sideSection}>
+                <TouchableOpacity
+                    onPress={onBack}
+                    activeOpacity={0.7}
+                    style={[
+                        styles.iconBtn,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }
+                    ]}
+                >
+                    <Ionicons
+                        name={currentStep === 1 ? "close" : "arrow-back"}
+                        size={wp('5.5%')}
+                        color={theme.text}
+                    />
+                </TouchableOpacity>
             </View>
 
-            <Text style={{ fontSize: wp('4.5%'), fontFamily: 'Outfit-Bold' }} className="text-zinc-900 dark:text-white">
-                {title}
-            </Text>
+            {/* Center Section: Title & Step Pills */}
+            <View style={styles.centerSection}>
+                <Text style={[styles.title, { color: theme.text }]}>
+                    {title}
+                </Text>
 
-            <TouchableOpacity onPress={() => router.push('/screens/(home)')}>
-                <Text className="text-zinc-500 font-[Outfit-Bold]">Skip</Text>
-            </TouchableOpacity>
+                <View style={styles.pillContainer}>
+                    {Array.from({ length: totalSteps }).map((_, index) => {
+                        const isCompleted = index + 1 < currentStep;
+                        const isActive = index + 1 === currentStep;
+
+                        return (
+                            <View
+                                key={index}
+                                style={[
+                                    styles.pill,
+                                    {
+                                        width: isActive ? wp('4%') : wp('1.5%'),
+                                        backgroundColor: isActive
+                                            ? theme.brand
+                                            : isCompleted ? theme.brand + '80' : (isDark ? '#333' : '#E0E0E0'),
+                                    }
+                                ]}
+                            />
+                        );
+                    })}
+                </View>
+            </View>
+
+            {/* Right Section: Skip Button (Hidden on Step 1) */}
+            <View style={styles.sideSection}>
+                <AnimatePresence>
+                    {isSkippable && (
+                        <MotiView
+                            from={{ opacity: 0, translateX: 10 }}
+                            animate={{ opacity: 1, translateX: 0 }}
+                            exit={{ opacity: 0, translateX: 10 }}
+                        >
+                            <TouchableOpacity
+                                onPress={() => router.replace('/screens/(home)')}
+                                style={styles.skipBtn}
+                            >
+                                <Text style={[styles.skipText, { color: theme.tabIconDefault }]}>
+                                    Skip
+                                </Text>
+                            </TouchableOpacity>
+                        </MotiView>
+                    )}
+                </AnimatePresence>
+            </View>
         </View>
     );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: wp('5%'),
+        paddingVertical: hp('1.5%'),
+        height: hp('10%'),
+    },
+    sideSection: {
+        width: wp('15%'),
+        alignItems: 'flex-start',
+    },
+    centerSection: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    title: {
+        fontSize: wp('4.2%'),
+        fontFamily: 'Outfit-Bold',
+        marginBottom: 6,
+    },
+    iconBtn: {
+        width: wp('10%'),
+        height: wp('10%'),
+        borderRadius: wp('5%'),
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pillContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    pill: {
+        height: 4,
+        borderRadius: 2,
+    },
+    skipBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+    },
+    skipText: {
+        fontFamily: 'Outfit-Bold',
+        fontSize: wp('3.5%'),
+    }
+});
 
 export default CompleteProfileHeader;

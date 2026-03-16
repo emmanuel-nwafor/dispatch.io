@@ -1,30 +1,28 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
     TouchableOpacity,
     ActivityIndicator,
     useColorScheme,
+    StyleSheet,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MotiView, AnimatePresence } from 'moti';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
-// Constants & Components
 import { Colors } from '@/app/constants/Colors';
-import LocationModal from '@/components/modals/LocationModal';
-import CompleteProfileHeader from '@/components/profile/CompleteProfileHeader';
 import { useUserStore } from '@/hooks/useUserStore';
 import { storage } from '@/app/utils/storage';
+import { user as api } from '@/app/data/api';
 
-// Modular Steps
+// Steps & Header
 import IdentityStep from './steps/IdentityStep';
 import AboutStep from './steps/AboutStep';
 import ExpertiseStep from './steps/ExpertiseStep';
@@ -33,78 +31,60 @@ import EducationStep from './steps/EducationStep';
 import VisualsStep from './steps/VisualsStep';
 import DocumentsStep from './steps/DocumentsStep';
 import PersonalStep from './steps/PersonalStep';
-import { user } from '@/app/data/api';
-
-interface Experience {
-    id: string;
-    title: string;
-    company: string;
-    startDate: string;
-    endDate: string;
-    current: boolean;
-    description: string;
-}
-
-interface Education {
-    id: string;
-    school: string;
-    degree: string;
-    field: string;
-    startDate: string;
-    endDate: string;
-}
-
-// Updated interface: Added optional flags to match the Modal's output
-interface SelectedLocation {
-    country: string;
-    countryCode: string;
-    state?: string;      // Optional
-    stateCode?: string;  // Optional
-}
+import CompleteProfileHeader from '@/components/profile/CompleteProfileHeader';
+import LocationPopup from '@/components/popups/LocationPopup';
 
 export default function CompleteProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
-
     const storeRole = useUserStore((state) => state.role);
 
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const [locationModalVisible, setLocationModalVisible] = useState(false);
 
-    // --- FORM STATE ---
     const [formData, setFormData] = useState({
         fullName: '',
         headline: '',
         bio: '',
-        location: {
-            country: '',
-            state: '',
-            countryCode: '',
-            stateCode: ''
-        },
+        location: { country: '', state: '', countryCode: '', stateCode: '' },
         category: '',
         industry: '',
         skills: [] as string[],
-        experience: [] as Experience[],
-        education: [] as Education[],
-        profileImage: null as string | null,
-        coverImage: null as string | null,
-        resume: null as { name: string; uri: string } | null,
+        experience: [] as any[],
+        education: [] as any[],
+        profileImage: null,
+        coverImage: null,
+        resume: null,
         portfolioUrl: '',
         linkedInUrl: '',
         birthday: '',
         gender: '',
-        languages: [] as string[]
+        languages: []
     });
 
     const totalSteps = 8;
-    const progressPercent = (step / totalSteps) * 100;
 
-    // --- ACTIONS ---
+    const validateCurrentStep = () => {
+        if (step === 1) {
+            if (!formData.fullName.trim() || !formData.headline.trim()) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Toast.show({
+                    type: 'error',
+                    text1: 'Required Fields',
+                    text2: 'Please provide your name and headline to continue.',
+                });
+                return false;
+            }
+        }
+        return true;
+    };
+
     const handleNext = () => {
+        if (!validateCurrentStep()) return;
+
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         if (step < totalSteps) {
             setStep(prev => prev + 1);
@@ -123,171 +103,108 @@ export default function CompleteProfileScreen() {
         setLoading(true);
         try {
             const mappedRole = storeRole === 'employer' ? 'recruiter' : 'seeker';
-
             const payload = {
                 role: mappedRole,
                 fullName: formData.fullName,
-                phone: formData.location.state + " " + formData.location.country, // Just a placeholder if phone not in form
+                headline: formData.headline,
                 bio: formData.bio,
                 location: `${formData.location.state}, ${formData.location.country}`,
                 skills: formData.skills,
-                experienceYear: formData.experience.length, // Placeholder logic
-                education: formData.education.length > 0 ? formData.education[0]?.degree : '',
-                preferredJobTypes: formData.category ? [formData.category] : [],
-                companyName: formData.fullName,
                 industry: formData.industry,
-                companySize: '1-10', // Default
-                companyLocation: `${formData.location.state}, ${formData.location.country}`,
                 avatar: formData.profileImage,
                 coverImage: formData.coverImage
             };
 
-            const response = await user.completeProfile(payload);
-
-            // Update saved user data
+            const response = await api.completeProfile(payload);
             await storage.saveUser(response.user);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-            Toast.show({
-                type: 'success',
-                text1: 'Profile Complete!',
-                text2: 'Redirecting you to home...',
-            });
-
-            setTimeout(() => {
-                if (mappedRole === 'recruiter') {
-                    router.replace('/screens/(recruiters)');
-                } else {
-                    router.replace('/screens/(home)');
-                }
-            }, 1000);
-
+            Toast.show({ type: 'success', text1: 'Profile Complete!' });
+            router.replace(mappedRole === 'recruiter' ? '/screens/(recruiters)' : '/screens/(home)');
         } catch (error: any) {
-            Toast.show({
-                type: 'error',
-                text1: 'Submission Failed',
-                text2: error.message || 'Could not complete profile. Please try again.'
-            });
+            Toast.show({ type: 'error', text1: 'Error', text2: error.message });
         } finally {
             setLoading(false);
         }
     };
 
     const inputStyle = {
-        backgroundColor: isDark ? '#18181b' : '#f4f4f5',
+        backgroundColor: isDark ? '#1c1c1e' : '#f8f9fa',
         color: theme.text,
-        borderColor: isDark ? '#27272a' : '#e4e4e7',
-    };
-
-    const renderStep = () => {
-        switch (step) {
-            case 1: return <IdentityStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
-            case 2: return <AboutStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} onOpenLocation={() => setLocationModalVisible(true)} />;
-            case 3: return <ExpertiseStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
-            case 4: return <ExperienceStep formData={formData} setFormData={setFormData} theme={theme} isDark={isDark} />;
-            case 5: return <EducationStep formData={formData} setFormData={setFormData} theme={theme} isDark={isDark} />;
-            case 6: return <VisualsStep formData={formData} setFormData={setFormData} theme={theme} isDark={isDark} />;
-            case 7: return <DocumentsStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
-            case 8: return <PersonalStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
-            default: return null;
-        }
+        borderRadius: wp('4%'),
+        borderWidth: 1,
+        borderColor: isDark ? '#2c2c2e' : '#e9ecef',
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
             <StatusBar style={isDark ? 'light' : 'dark'} />
             <Stack.Screen options={{ headerShown: false }} />
 
+            {/* Advanced Header with Integrated Stepper */}
             <CompleteProfileHeader
-                title={`Step ${step} of ${totalSteps}`}
+                title="Complete Profile"
                 onBack={handleBack}
-                showBack={step > 1}
+                currentStep={step}
+                totalSteps={totalSteps}
+                theme={theme}
             />
 
-            {/* Progress Bar */}
-            <View style={{ paddingHorizontal: wp('6%'), marginBottom: hp('3%') }}>
-                <View className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden">
-                    <MotiView
-                        animate={{ width: `${progressPercent}%` }}
-                        transition={{ type: 'spring', damping: 20 }}
-                        style={{ backgroundColor: theme.brand }}
-                        className="h-full"
-                    />
-                </View>
-            </View>
-
             <KeyboardAwareScrollView
-                className="flex-1"
-                contentContainerStyle={{ paddingHorizontal: wp('6%'), paddingBottom: hp('5%') }}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: wp('6%'), paddingBottom: hp('15%') }}
                 showsVerticalScrollIndicator={false}
-                enableOnAndroid={true}
-                extraScrollHeight={20}
                 keyboardShouldPersistTaps="handled"
             >
                 <AnimatePresence exitBeforeEnter>
                     <MotiView
                         key={step}
-                        from={{ opacity: 0, translateX: 10 }}
-                        animate={{ opacity: 1, translateX: 0 }}
-                        exit={{ opacity: 0, translateX: -10 }}
-                        transition={{ type: 'timing', duration: 300 }}
+                        from={{ opacity: 0, scale: 0.95, translateY: 10 }}
+                        animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                        exit={{ opacity: 0, scale: 1.05, translateY: -10 }}
+                        transition={{ type: 'timing', duration: 400 }}
                     >
-                        {renderStep()}
+                        {(() => {
+                            switch (step) {
+                                case 1: return <IdentityStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
+                                case 2: return <AboutStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} onOpenLocation={() => setLocationModalVisible(true)} />;
+                                case 3: return <ExpertiseStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
+                                case 4: return <ExperienceStep formData={formData} setFormData={setFormData} theme={theme} isDark={isDark} />;
+                                case 5: return <EducationStep formData={formData} setFormData={setFormData} theme={theme} isDark={isDark} />;
+                                case 6: return <VisualsStep formData={formData} setFormData={setFormData} theme={theme} isDark={isDark} />;
+                                case 7: return <DocumentsStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
+                                case 8: return <PersonalStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
+                                default: return null;
+                            }
+                        })()}
                     </MotiView>
                 </AnimatePresence>
             </KeyboardAwareScrollView>
 
-            {/* Footer Navigation */}
-            <View
-                style={{
-                    paddingHorizontal: wp('6%'),
-                    paddingVertical: hp('2%'),
-                }}
-                className="flex-row gap-4 mb-16"
-            >
-                {step > 1 && (
-                    <TouchableOpacity
-                        onPress={handleBack}
-                        style={{ height: hp('7%') }}
-                        className="flex-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 items-center justify-center flex-row"
-                    >
-                        <Text style={{ color: theme.text }} className="font-[Outfit-Bold] text-lg">Back</Text>
-                    </TouchableOpacity>
-                )}
-
+            {/* Fixed Floating Footer */}
+            <View style={[styles.footer, { backgroundColor: theme.background, borderTopColor: isDark ? '#2c2c2e' : '#e9ecef' }]}>
                 <TouchableOpacity
                     onPress={handleNext}
                     disabled={loading}
-                    style={{ backgroundColor: theme.brand, height: hp('7%') }}
-                    className="flex-[2] rounded-xl items-center justify-center flex-row"
+                    activeOpacity={0.8}
+                    style={[styles.mainBtn, { backgroundColor: theme.brand }]}
                 >
                     {loading ? (
                         <ActivityIndicator color="darkgreen" />
                     ) : (
-                        <>
-                            <Text className="font-[Outfit-Bold] text-black text-lg mr-2">
-                                {step === totalSteps ? 'Complete Profile' : 'Continue'}
-                            </Text>
-                            {step < totalSteps && <Ionicons name="chevron-forward" size={20} color="black" />}
-                        </>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.btnText}>{step === totalSteps ? 'Finish Profile' : 'Continue'}</Text>
+                            <Ionicons name="chevron-forward" size={wp('5%')} color="black" style={{ marginLeft: 5 }} />
+                        </View>
                     )}
                 </TouchableOpacity>
             </View>
 
-            <LocationModal
+            <LocationPopup
                 visible={locationModalVisible}
                 onClose={() => setLocationModalVisible(false)}
-                onSelect={(loc: SelectedLocation) => {
-                    setFormData({
-                        ...formData,
-                        location: {
-                            country: loc.country,
-                            countryCode: loc.countryCode,
-                            state: loc.state || '',
-                            stateCode: loc.stateCode || ''
-                        }
-                    });
+                onSelect={(loc) => {
+                    setFormData({ ...formData, location: loc });
                     setLocationModalVisible(false);
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }}
@@ -297,3 +214,31 @@ export default function CompleteProfileScreen() {
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    footer: {
+        position: 'absolute',
+        bottom: 0,
+        width: wp('100%'),
+        paddingHorizontal: wp('6%'),
+        paddingTop: hp('2%'),
+        paddingBottom: hp('4%'),
+        borderTopWidth: 1,
+    },
+    mainBtn: {
+        height: hp('7.5%'),
+        borderRadius: wp('4%'),
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 5,
+    },
+    btnText: {
+        fontFamily: 'Outfit-Bold',
+        fontSize: wp('4.5%'),
+        color: '#000',
+    }
+});

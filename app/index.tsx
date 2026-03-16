@@ -56,8 +56,11 @@ export default function Index() {
         const user = await storage.getUser();
 
         if (token && user) {
-          // Graceful role handling
-          if (user.role === 'recruiter') {
+          const isProfileComplete = user.fullName && user.headline;
+
+          if (!isProfileComplete) {
+            router.replace('/screens/complete-profile');
+          } else if (user.role === 'recruiter' || user.role === 'employer') {
             router.replace('/screens/(recruiters)');
           } else {
             router.replace('/screens/(home)');

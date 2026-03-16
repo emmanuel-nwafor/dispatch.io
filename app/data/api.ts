@@ -269,10 +269,16 @@ export const posts = {
 };
 
 export const reels = {
-    create: (formData: FormData) => {
+    getUploadUrl: () => {
+        return request<{ success: boolean; data: { uploadUrl: string; uploadId: string } }>('/reels/upload-url', {
+            method: 'GET',
+        });
+    },
+    create: (data: FormData | any) => {
+        const isFormData = data instanceof FormData;
         return request<{ success: boolean; message: string; data: Reel }>('/reels', {
             method: 'POST',
-            body: formData,
+            body: isFormData ? data : JSON.stringify(data),
         });
     },
     delete: (id: string) => {

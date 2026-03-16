@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { MotiView, AnimatePresence } from 'moti';
 import * as Haptics from 'expo-haptics';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 interface ExpertiseStepProps {
     formData: any;
@@ -39,17 +41,30 @@ export default function ExpertiseStep({ formData, setFormData, theme, inputStyle
     const maxBioLength = 500;
 
     return (
-        <View>
-            <View className="mb-8">
-                <Text style={{ color: theme.text }} className="text-3xl font-[Outfit-Bold] mb-2">Expertise</Text>
-                <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Medium] text-lg">Highlight your professional skills and story.</Text>
+        <KeyboardAwareScrollView
+            enableOnAndroid={true}
+            extraScrollHeight={hp('10%')}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+        >
+            <View style={{ marginBottom: hp('4%') }}>
+                <Text style={{ color: theme.text, fontSize: wp('8%'), fontFamily: 'Outfit-Bold' }}>
+                    Expertise
+                </Text>
+                <Text style={{ color: '#8e8e93', fontSize: wp('4.2%'), fontFamily: 'Outfit-Medium', marginTop: 5 }}>
+                    Highlight your professional skills and story.
+                </Text>
             </View>
 
             {/* Bio Section */}
-            <View className="mb-8">
-                <View className="flex-row justify-between items-center mb-3 ml-1">
-                    <Text style={{ color: theme.text }} className="font-[Outfit-Bold]">Bio</Text>
-                    <Text style={{ color: bioLength > maxBioLength ? '#ef4444' : theme.tabIconDefault }} className="font-[Outfit-Medium] text-xs">
+            <View style={{ marginBottom: hp('4%') }}>
+                <View style={styles.sectionHeader}>
+                    <Text style={[styles.label, { color: theme.text }]}>Bio</Text>
+                    <Text style={{
+                        color: bioLength > maxBioLength ? '#ef4444' : '#8e8e93',
+                        fontFamily: 'Outfit-Medium',
+                        fontSize: wp('3%')
+                    }}>
                         {bioLength}/{maxBioLength}
                     </Text>
                 </View>
@@ -57,14 +72,18 @@ export default function ExpertiseStep({ formData, setFormData, theme, inputStyle
                     multiline
                     onFocus={() => setIsBioFocused(true)}
                     onBlur={() => setIsBioFocused(false)}
-                    className="p-5 rounded-xl border font-[Outfit-Medium] h-40"
                     style={[
                         inputStyle,
-                        { borderColor: isBioFocused ? theme.brand : inputStyle.borderColor }
+                        styles.bioInput,
+                        {
+                            borderColor: isBioFocused ? theme.brand : inputStyle.borderColor,
+                            color: theme.text,
+                            backgroundColor: isBioFocused ? theme.background : inputStyle.backgroundColor
+                        }
                     ]}
                     textAlignVertical="top"
-                    placeholder="E.g. Full-stack developer with 5+ years of experience in building scalable apps..."
-                    placeholderTextColor={theme.tabIconDefault}
+                    placeholder="E.g. Full-stack developer with 5+ years of experience..."
+                    placeholderTextColor="#52525b"
                     value={formData.bio}
                     onChangeText={(t) => setFormData({ ...formData, bio: t })}
                     maxLength={maxBioLength}
@@ -72,58 +91,59 @@ export default function ExpertiseStep({ formData, setFormData, theme, inputStyle
             </View>
 
             {/* Top Skills Section */}
-            <View className="mb-6">
-                <Text style={{ color: theme.text }} className="font-[Outfit-Bold] mb-3 ml-1">Top Skills</Text>
-                <View className="flex-row gap-2 mb-4">
-                    <TextInput
-                        className="flex-1 p-5 rounded-xl border font-[Outfit-Medium]"
-                        style={inputStyle}
-                        placeholder="Add a skill..."
-                        placeholderTextColor={theme.tabIconDefault}
-                        value={skillInput}
-                        onChangeText={setSkillInput}
-                        onSubmitEditing={() => addSkill()}
-                    />
+            <View style={{ marginBottom: hp('3%') }}>
+                <Text style={[styles.label, { color: theme.text, marginBottom: hp('1.5%') }]}>Top Skills</Text>
+                <View style={styles.skillInputRow}>
+                    <View style={[inputStyle, styles.skillInputWrapper]}>
+                        <Feather name="zap" size={18} color={theme.brand} style={{ marginRight: 10 }} />
+                        <TextInput
+                            style={{ flex: 1, height: hp('7%'), fontFamily: 'Outfit-Medium', color: theme.text }}
+                            placeholder="Add a skill..."
+                            placeholderTextColor="#52525b"
+                            value={skillInput}
+                            onChangeText={setSkillInput}
+                            onSubmitEditing={() => addSkill()}
+                        />
+                    </View>
                     <TouchableOpacity
                         onPress={() => addSkill()}
-                        style={{ backgroundColor: theme.brand }}
-                        className="w-16 h-16 rounded-xl items-center justify-center"
+                        activeOpacity={0.8}
+                        style={[styles.addButton, { backgroundColor: theme.brand }]}
                     >
-                        <Ionicons name="add" size={28} color="black" />
+                        <Ionicons name="add" size={28} color="#000" />
                     </TouchableOpacity>
                 </View>
 
                 {/* Suggested Skills */}
-                <View className="mb-6">
-                    <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Bold] text-xs uppercase tracking-wider mb-3 ml-1">Suggested for you</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                <View style={{ marginTop: hp('2%'), marginBottom: hp('3%') }}>
+                    <Text style={styles.subLabel}>SUGGESTED FOR YOU</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestedScroll}>
                         {SUGGESTED_SKILLS.filter(s => !formData.skills.includes(s)).map((s, i) => (
                             <TouchableOpacity
                                 key={i}
                                 onPress={() => addSkill(s)}
-                                style={{ borderColor: theme.tabIconDefault + '30' }}
-                                className="bg-zinc-50 dark:bg-zinc-900/50 border px-4 py-2 rounded-full mr-2 flex-row items-center"
+                                style={[styles.suggestedChip, { borderColor: '#8e8e9330' }]}
                             >
-                                <Ionicons name="add" size={14} color={theme.text} className="mr-1" />
-                                <Text style={{ color: theme.text }} className="font-[Outfit-Medium] text-sm">{s}</Text>
+                                <Ionicons name="add" size={14} color={theme.brand} style={{ marginRight: 4 }} />
+                                <Text style={{ color: theme.text, fontFamily: 'Outfit-Medium', fontSize: wp('3.5%') }}>{s}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
                 </View>
 
                 {/* Selected Skills Tags */}
-                <View className="flex-row flex-wrap">
+                <View style={styles.tagsContainer}>
                     <AnimatePresence>
                         {formData.skills.map((s: string, i: number) => (
                             <MotiView
                                 from={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.8, opacity: 0 }}
+                                transition={{ type: 'spring', damping: 15 }}
                                 key={s}
-                                style={{ backgroundColor: theme.brand + '20', borderColor: theme.brand }}
-                                className="px-4 py-2.5 ml-1 mb-2 rounded-xl flex-row items-center border"
+                                style={[styles.tag, { backgroundColor: theme.brand + '15', borderColor: theme.brand }]}
                             >
-                                <Text style={{ color: theme.text }} className="font-[Outfit-Bold] mr-2">{s}</Text>
+                                <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold', marginRight: 8 }}>{s}</Text>
                                 <TouchableOpacity onPress={() => removeSkill(i)}>
                                     <Ionicons name="close-circle" size={18} color={theme.text} />
                                 </TouchableOpacity>
@@ -132,6 +152,86 @@ export default function ExpertiseStep({ formData, setFormData, theme, inputStyle
                     </AnimatePresence>
                 </View>
             </View>
-        </View>
+        </KeyboardAwareScrollView>
     );
 }
+
+const styles = StyleSheet.create({
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+        paddingHorizontal: 5
+    },
+    label: {
+        fontFamily: 'Outfit-Bold',
+        fontSize: wp('4%'),
+    },
+    subLabel: {
+        color: '#8e8e93',
+        fontFamily: 'Outfit-Bold',
+        fontSize: wp('3%'),
+        letterSpacing: 1,
+        marginBottom: 12,
+        marginLeft: 5
+    },
+    bioInput: {
+        padding: 15,
+        borderRadius: wp('4%'),
+        fontFamily: 'Outfit-Medium',
+        height: hp('18%'),
+        borderWidth: 1.5,
+    },
+    skillInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10
+    },
+    skillInputWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        borderRadius: wp('4%'),
+    },
+    addButton: {
+        width: hp('7%'),
+        height: hp('7%'),
+        borderRadius: wp('4%'),
+        // itemsCenter: 'center',
+        justifyContent: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        elevation: 5,
+        alignItems: 'center'
+    },
+    suggestedScroll: {
+        flexDirection: 'row',
+    },
+    suggestedChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(142, 142, 147, 0.1)',
+        borderWidth: 1,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 100,
+        marginRight: 10
+    },
+    tagsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8
+    },
+    tag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+    }
+});

@@ -49,6 +49,7 @@ export default function Login() {
             const response = await auth.login(email.toLowerCase().trim(), password);
 
             if (response.success) {
+                // Save session data
                 await storage.saveToken(response.token);
                 await storage.saveUser(response.user);
 
@@ -58,7 +59,16 @@ export default function Login() {
                     text2: `Welcome back to dispatch.io!`
                 });
 
-                // Role-based navigation logic
+                /**
+                 * Problem Solving: Logic to detect profile status from API response
+                 * Based on your shared JSON: response.user.isProfileCompleted
+                 */
+                if (response.user.isProfileCompleted === false) {
+                    router.replace('/screens/complete-profile');
+                    return;
+                }
+
+                // Logic for completed profiles
                 if (response.user.role === 'recruiter') {
                     router.replace('/screens/(recruiters)');
                 } else {
@@ -96,29 +106,52 @@ export default function Login() {
                 >
                     <View style={{ marginTop: hp('5%'), flex: 1 }}>
                         {/* Header Section */}
-                        <View className="flex-row items-center mb-2">
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: hp('1%') }}>
                             <Image
                                 source={require('@/assets/images/logo.png')}
                                 style={{ width: wp('10%'), height: wp('10%') }}
                                 resizeMode="contain"
                             />
-                            <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }} className="text-2xl ml-2">
+                            <Text style={{
+                                fontFamily: 'Outfit-Bold',
+                                color: theme.text,
+                                fontSize: wp('6%'),
+                                marginLeft: wp('2%')
+                            }}>
                                 dispatch.io
                             </Text>
                         </View>
 
-                        <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }} className="text-3xl mt-4">
+                        <Text style={{
+                            fontFamily: 'Outfit-Bold',
+                            color: theme.text,
+                            fontSize: wp('7.5%'),
+                            marginTop: hp('2%')
+                        }}>
                             Welcome Back
                         </Text>
-                        <Text style={{ fontFamily: 'Outfit-Medium', color: isDark ? '#a1a1aa' : '#6b7280' }} className="text-lg mt-2">
+                        <Text style={{
+                            fontFamily: 'Outfit-Medium',
+                            color: isDark ? '#a1a1aa' : '#6b7280',
+                            fontSize: wp('4.2%'),
+                            marginTop: hp('1%')
+                        }}>
                             Sign in to continue your career journey.
                         </Text>
 
                         {/* Form Section */}
                         <View style={{ marginTop: hp('4%') }}>
                             <View
-                                style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="p-2.5 px-4 rounded-xl border border-zinc-800/10 mb-3"
+                                style={{
+                                    backgroundColor: isDark ? '#18181b' : '#f4f4f5',
+                                    height: hp('7%'),
+                                    paddingHorizontal: wp('4%'),
+                                    borderRadius: wp('3%'),
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(39, 39, 42, 0.1)',
+                                    marginBottom: hp('2%'),
+                                    justifyContent: 'center'
+                                }}
                             >
                                 <TextInput
                                     placeholder="Email Address"
@@ -127,13 +160,25 @@ export default function Login() {
                                     placeholderTextColor={isDark ? '#52525b' : '#a1a1aa'}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
-                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: hp('1.8%') }}
+                                    style={{
+                                        fontFamily: 'Outfit-Medium',
+                                        color: theme.text,
+                                        fontSize: wp('4%')
+                                    }}
                                 />
                             </View>
 
                             <View
-                                style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="p-2.5 px-4 rounded-xl border border-zinc-800/10 flex-row items-center"
+                                style={{
+                                    backgroundColor: isDark ? '#18181b' : '#f4f4f5',
+                                    height: hp('7%'),
+                                    paddingHorizontal: wp('4%'),
+                                    borderRadius: wp('3%'),
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(39, 39, 42, 0.1)',
+                                    flexDirection: 'row',
+                                    alignItems: 'center'
+                                }}
                             >
                                 <TextInput
                                     placeholder="Password"
@@ -141,23 +186,34 @@ export default function Login() {
                                     onChangeText={setPassword}
                                     placeholderTextColor={isDark ? '#52525b' : '#a1a1aa'}
                                     secureTextEntry={!isPasswordVisible}
-                                    style={{ fontFamily: 'Outfit-Medium', color: theme.text, fontSize: hp('1.8%'), flex: 1 }}
+                                    style={{
+                                        fontFamily: 'Outfit-Medium',
+                                        color: theme.text,
+                                        fontSize: wp('4%'),
+                                        flex: 1
+                                    }}
                                 />
                                 <TouchableOpacity
                                     onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                                    className="ml-2"
+                                    style={{ marginLeft: wp('2%') }}
                                 >
                                     <Ionicons
                                         name={isPasswordVisible ? "eye-outline" : "eye-off-outline"}
-                                        size={wp('5%')}
+                                        size={wp('5.5%')}
                                         color={isDark ? '#a1a1aa' : '#6b7280'}
                                     />
                                 </TouchableOpacity>
                             </View>
 
                             <TouchableOpacity
-                                style={{ backgroundColor: isDark ? theme.brand : '#000000' }}
-                                className="py-3.5 rounded-xl items-center mt-6"
+                                style={{
+                                    backgroundColor: isDark ? theme.brand : '#000000',
+                                    height: hp('7%'),
+                                    marginTop: hp('4%'),
+                                    borderRadius: wp('3%'),
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
                                 onPress={handleLogin}
                                 disabled={isLoading}
                             >
@@ -165,8 +221,11 @@ export default function Login() {
                                     <ActivityIndicator size="small" color="#006400" />
                                 ) : (
                                     <Text
-                                        style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#000000' : '#FFFFFF' }}
-                                        className="text-lg"
+                                        style={{
+                                            fontFamily: 'Outfit-Bold',
+                                            color: isDark ? '#000000' : '#FFFFFF',
+                                            fontSize: wp('4.5%')
+                                        }}
                                     >
                                         Login
                                     </Text>
@@ -175,33 +234,60 @@ export default function Login() {
                         </View>
 
                         {/* Divider */}
-                        <View className="flex-row items-center my-8">
-                            <View className="flex-1 h-[1px] bg-zinc-800/30" />
-                            <Text style={{ fontFamily: 'Outfit-Medium' }} className="mx-4 text-zinc-500">or</Text>
-                            <View className="flex-1 h-[1px] bg-zinc-800/30" />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: hp('4%') }}>
+                            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(39, 39, 42, 0.3)' }} />
+                            <Text style={{
+                                fontFamily: 'Outfit-Medium',
+                                fontSize: wp('3.5%'),
+                                marginHorizontal: wp('4%'),
+                                color: '#71717a'
+                            }}>
+                                or
+                            </Text>
+                            <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(39, 39, 42, 0.3)' }} />
                         </View>
 
                         {/* Social Login */}
-                        <View className="flex-row justify-between space-x-4">
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                             <TouchableOpacity
-                                style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="flex-1 py-3.5 rounded-xl border border-zinc-800/10 items-center justify-center"
+                                style={{
+                                    backgroundColor: isDark ? '#18181b' : '#f4f4f5',
+                                    width: wp('42%'),
+                                    height: hp('6.5%'),
+                                    borderRadius: wp('3%'),
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(39, 39, 42, 0.1)',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
                             >
-                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>Google</Text>
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: wp('3.8%') }}>Google</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={{ backgroundColor: isDark ? '#18181b' : '#f4f4f5' }}
-                                className="flex-1 py-3.5 rounded-xl border border-zinc-800/10 items-center justify-center ml-4"
+                                style={{
+                                    backgroundColor: isDark ? '#18181b' : '#f4f4f5',
+                                    width: wp('42%'),
+                                    height: hp('6.5%'),
+                                    borderRadius: wp('3%'),
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(39, 39, 42, 0.1)',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
                             >
-                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>Apple</Text>
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: wp('3.8%') }}>Apple</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     {/* Footer */}
-                    <View style={{ marginBottom: hp('4%'), marginTop: 20 }} className="items-center">
+                    <View style={{ marginBottom: hp('4%'), marginTop: hp('3%'), alignItems: 'center' }}>
                         <TouchableOpacity onPress={() => router.push('/screens/auth/signup/email')}>
-                            <Text style={{ fontFamily: 'Outfit-Medium', color: isDark ? '#a1a1aa' : '#6b7280' }}>
+                            <Text style={{
+                                fontFamily: 'Outfit-Medium',
+                                color: isDark ? '#a1a1aa' : '#6b7280',
+                                fontSize: wp('3.8%')
+                            }}>
                                 Don't have an account? <Text style={{ color: theme.brand }}>Sign Up</Text>
                             </Text>
                         </TouchableOpacity>
