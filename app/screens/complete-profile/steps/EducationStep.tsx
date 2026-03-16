@@ -5,7 +5,6 @@ import { MotiView, AnimatePresence } from 'moti';
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import EducationCard from '@/components/profile/EducationCard';
 
 interface EducationStepProps {
@@ -16,7 +15,7 @@ interface EducationStepProps {
 }
 
 export default function EducationStep({ formData, setFormData, theme, isDark }: EducationStepProps) {
-    const [modalVisible, setModalVisible] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
     const [currentEdu, setCurrentEdu] = useState({
         school: '',
         degree: '',
@@ -26,11 +25,12 @@ export default function EducationStep({ formData, setFormData, theme, isDark }: 
     });
 
     const handleSave = () => {
-        if (!currentEdu.school || !currentEdu.degree || !currentEdu.startDate) {
+        if (!currentEdu.school.trim() || !currentEdu.degree.trim() || !currentEdu.startDate.trim()) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Toast.show({
                 type: 'error',
                 text1: 'Required Fields',
-                text2: 'Please fill in School, Degree, and Start Year.'
+                text2: 'School, Degree, and Start Year are mandatory.'
             });
             return;
         }
@@ -45,17 +45,12 @@ export default function EducationStep({ formData, setFormData, theme, isDark }: 
             education: [newEntry, ...formData.education]
         });
 
-        closeForm();
+        setIsAdding(false);
+        resetForm();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Toast.show({
-            type: 'success',
-            text1: 'Education Added',
-            text2: `Successfully added ${currentEdu.school}`
-        });
     };
 
-    const closeForm = () => {
-        setModalVisible(false);
+    const resetForm = () => {
         setCurrentEdu({ school: '', degree: '', field: '', startDate: '', endDate: '' });
         Keyboard.dismiss();
     };
@@ -74,121 +69,113 @@ export default function EducationStep({ formData, setFormData, theme, isDark }: 
                 <Text style={{ color: theme.tabIconDefault, fontSize: wp('4.2%'), fontFamily: 'Outfit-Medium' }}>Your academic journey.</Text>
             </View>
 
-            {/* List View */}
-            <View style={{ gap: 15, marginBottom: hp('4%') }}>
-                {formData.education.length > 0 ? (
-                    formData.education.map((edu: any) => (
-                        <EducationCard
-                            key={edu.id}
-                            education={edu}
-                            theme={theme}
-                            isDark={isDark}
-                            onDelete={removeEducation}
-                        />
-                    ))
-                ) : (
-                    <View style={[styles.emptyState, { backgroundColor: inputBg, borderColor: isDark ? '#2c2c2e' : '#e5e7eb' }]}>
-                        <MaterialCommunityIcons name="school-outline" size={40} color={theme.tabIconDefault} style={{ marginBottom: 12 }} />
-                        <Text style={{ color: theme.tabIconDefault, fontFamily: 'Outfit-Medium' }}>No education added yet.</Text>
-                    </View>
-                )}
-            </View>
-
-            <TouchableOpacity
-                onPress={() => {
-                    setModalVisible(true);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                style={[styles.addBtn, { borderColor: theme.brand }]}
-            >
-                <Ionicons name="add-circle" size={24} color={theme.brand} style={{ marginRight: 8 }} />
-                <Text style={{ color: theme.brand, fontFamily: 'Outfit-Bold', fontSize: wp('4.5%') }}>Add Education</Text>
-            </TouchableOpacity>
-
-            {/* View-Based Overlay Form */}
             <AnimatePresence>
-                {modalVisible && (
-                    <View style={StyleSheet.absoluteFill}>
-                        <MotiView
-                            from={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            style={styles.backdrop}
-                        >
-                            <TouchableOpacity style={{ flex: 1 }} onPress={closeForm} />
-                        </MotiView>
-
-                        <MotiView
-                            from={{ opacity: 0, translateY: hp('100%') }}
-                            animate={{ opacity: 1, translateY: 0 }}
-                            exit={{ opacity: 0, translateY: hp('100%') }}
-                            transition={{ type: 'timing', duration: 300 }}
-                            style={[styles.formCard, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}
-                        >
-                            <View style={styles.formHeader}>
-                                <TouchableOpacity onPress={closeForm}>
-                                    <Feather name="x" size={24} color={theme.text} />
-                                </TouchableOpacity>
-                                <Text style={[styles.formTitle, { color: theme.text }]}>Add Education</Text>
-                                <TouchableOpacity onPress={handleSave}>
-                                    <Text style={{ color: theme.brand, fontFamily: 'Outfit-Bold', fontSize: wp('4%') }}>Save</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            <KeyboardAwareScrollView
-                                style={{ flex: 1 }}
-                                contentContainerStyle={{ padding: 20 }}
-                                showsVerticalScrollIndicator={false}
-                                keyboardShouldPersistTaps="handled"
-                            >
-                                <Text style={styles.inputLabel}>INSTITUTION</Text>
-                                <TextInput
-                                    placeholder="School (e.g. Stanford University)"
-                                    placeholderTextColor={theme.tabIconDefault}
-                                    style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
-                                    value={currentEdu.school}
-                                    onChangeText={(t) => setCurrentEdu({ ...currentEdu, school: t })}
-                                />
-
-                                <Text style={styles.inputLabel}>QUALIFICATION</Text>
-                                <TextInput
-                                    placeholder="Degree (e.g. Bachelor of Science)"
-                                    placeholderTextColor={theme.tabIconDefault}
-                                    style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
-                                    value={currentEdu.degree}
-                                    onChangeText={(t) => setCurrentEdu({ ...currentEdu, degree: t })}
-                                />
-
-                                <TextInput
-                                    placeholder="Field of Study (e.g. Computer Science)"
-                                    placeholderTextColor={theme.tabIconDefault}
-                                    style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
-                                    value={currentEdu.field}
-                                    onChangeText={(t) => setCurrentEdu({ ...currentEdu, field: t })}
-                                />
-
-                                <Text style={styles.inputLabel}>TIMELINE</Text>
-                                <View style={{ flexDirection: 'row', gap: 12, marginBottom: hp('5%') }}>
-                                    <TextInput
-                                        placeholder="Start Year"
-                                        placeholderTextColor={theme.tabIconDefault}
-                                        keyboardType="numeric"
-                                        style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
-                                        value={currentEdu.startDate}
-                                        onChangeText={(t) => setCurrentEdu({ ...currentEdu, startDate: t })}
+                {!isAdding ? (
+                    <MotiView
+                        key="list"
+                        from={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ type: 'timing', duration: 200 }}
+                    >
+                        <View style={{ gap: 15, marginBottom: hp('3%') }}>
+                            {formData.education.length > 0 ? (
+                                formData.education.map((edu: any) => (
+                                    <EducationCard
+                                        key={edu.id}
+                                        education={edu}
+                                        theme={theme}
+                                        isDark={isDark}
+                                        onDelete={removeEducation}
                                     />
-                                    <TextInput
-                                        placeholder="End Year (or Expected)"
-                                        placeholderTextColor={theme.tabIconDefault}
-                                        keyboardType="numeric"
-                                        style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
-                                        value={currentEdu.endDate}
-                                        onChangeText={(t) => setCurrentEdu({ ...currentEdu, endDate: t })}
-                                    />
+                                ))
+                            ) : (
+                                <View style={[styles.emptyState, { backgroundColor: inputBg, borderColor: isDark ? '#2c2c2e' : '#e5e7eb' }]}>
+                                    <MaterialCommunityIcons name="school-outline" size={40} color={theme.tabIconDefault} style={{ marginBottom: 12 }} />
+                                    <Text style={{ color: theme.tabIconDefault, fontFamily: 'Outfit-Medium' }}>No education added yet.</Text>
                                 </View>
-                            </KeyboardAwareScrollView>
-                        </MotiView>
-                    </View>
+                            )}
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setIsAdding(true);
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            }}
+                            style={[styles.addBtn, { borderColor: theme.brand }]}
+                        >
+                            <Ionicons name="add-circle" size={24} color={theme.brand} style={{ marginRight: 8 }} />
+                            <Text style={{ color: theme.brand, fontFamily: 'Outfit-Bold', fontSize: wp('4.5%') }}>Add Education</Text>
+                        </TouchableOpacity>
+                    </MotiView>
+                ) : (
+                    <MotiView
+                        key="form"
+                        from={{ opacity: 0, translateY: 20 }}
+                        animate={{ opacity: 1, translateY: 0 }}
+                        exit={{ opacity: 0, translateY: 20 }}
+                        style={[styles.inlineForm, { backgroundColor: isDark ? '#161618' : '#fff', borderColor: isDark ? '#2c2c2e' : '#e5e7eb' }]}
+                    >
+                        <View style={styles.formHeader}>
+                            <Text style={[styles.formTitle, { color: theme.text }]}>New Qualification</Text>
+                            <TouchableOpacity onPress={() => setIsAdding(false)}>
+                                <Feather name="x-circle" size={22} color={theme.tabIconDefault} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.inputLabel}>INSTITUTION <Text style={{ color: '#ff4444' }}>*</Text></Text>
+                        <TextInput
+                            placeholder="School (e.g. Stanford University)"
+                            placeholderTextColor={theme.tabIconDefault}
+                            style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
+                            value={currentEdu.school}
+                            onChangeText={(t) => setCurrentEdu({ ...currentEdu, school: t })}
+                        />
+
+                        <Text style={styles.inputLabel}>QUALIFICATION <Text style={{ color: '#ff4444' }}>*</Text></Text>
+                        <TextInput
+                            placeholder="Degree (e.g. Bachelor of Science)"
+                            placeholderTextColor={theme.tabIconDefault}
+                            style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
+                            value={currentEdu.degree}
+                            onChangeText={(t) => setCurrentEdu({ ...currentEdu, degree: t })}
+                        />
+
+                        <TextInput
+                            placeholder="Field of Study (e.g. Computer Science)"
+                            placeholderTextColor={theme.tabIconDefault}
+                            style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
+                            value={currentEdu.field}
+                            onChangeText={(t) => setCurrentEdu({ ...currentEdu, field: t })}
+                        />
+
+                        <Text style={styles.inputLabel}>TIMELINE <Text style={{ color: '#ff4444' }}>*</Text></Text>
+                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                            <TextInput
+                                placeholder="Start Year"
+                                placeholderTextColor={theme.tabIconDefault}
+                                keyboardType="numeric"
+                                style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
+                                value={currentEdu.startDate}
+                                onChangeText={(t) => setCurrentEdu({ ...currentEdu, startDate: t })}
+                            />
+                            <TextInput
+                                placeholder="End Year"
+                                placeholderTextColor={theme.tabIconDefault}
+                                keyboardType="numeric"
+                                style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
+                                value={currentEdu.endDate}
+                                onChangeText={(t) => setCurrentEdu({ ...currentEdu, endDate: t })}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleSave}
+                            style={[styles.saveInlineBtn, { backgroundColor: theme.brand }]}
+                        >
+                            <Text style={styles.saveBtnText}>Save Education</Text>
+                        </TouchableOpacity>
+                    </MotiView>
                 )}
             </AnimatePresence>
         </View>
@@ -199,8 +186,8 @@ const styles = StyleSheet.create({
     emptyState: {
         alignItems: 'center',
         justifyContent: 'center',
-        padding: hp('5%'),
-        borderRadius: wp('8%'),
+        padding: hp('4%'),
+        borderRadius: wp('6%'),
         borderWidth: 1.5,
         borderStyle: 'dashed',
     },
@@ -213,27 +200,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.8)',
-    },
-    formCard: {
-        position: 'absolute',
-        bottom: 0,
-        width: wp('100%'),
-        height: hp('75%'),
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        overflow: 'hidden',
+    inlineForm: {
+        padding: 20,
+        borderRadius: 25,
+        borderWidth: 1,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.05,
+        shadowRadius: 20,
+        elevation: 2,
     },
     formHeader: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 20,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#8e8e9330'
+        alignItems: 'center',
+        marginBottom: 20,
     },
     formTitle: {
         fontFamily: 'Outfit-Bold',
@@ -243,14 +224,23 @@ const styles = StyleSheet.create({
         color: '#8e8e93',
         fontFamily: 'Outfit-Bold',
         fontSize: wp('3%'),
-        marginBottom: 10,
-        marginTop: 5,
+        marginBottom: 8,
         letterSpacing: 1
     },
     textInput: {
-        padding: 18,
-        borderRadius: 15,
+        padding: 16,
+        borderRadius: 12,
         fontFamily: 'Outfit-Medium',
-        marginBottom: 15,
+        marginBottom: 12,
+    },
+    saveInlineBtn: {
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    saveBtnText: {
+        fontFamily: 'Outfit-Bold',
+        color: '#000',
+        fontSize: wp('4%'),
     }
 });

@@ -5,19 +5,25 @@ const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:5000/a
 // Interfaces
 
 export interface UserDetails {
-    autoApply: {
-        enabled: boolean;
-        minMatchScore: number;
-    };
     fullName: string;
+    headline: string;
     phone: string;
     bio: string;
     location: string;
     resumeUrl: string;
     skills: string[];
-    experienceYear: number;
-    education: string;
+    experience: any[];
+    education: any[];
+    languages: string[];
+    birthday: string;
+    gender: string;
+    portfolioUrl: string;
+    linkedInUrl: string;
     preferredJobTypes: string[];
+    autoApply: {
+        enabled: boolean;
+        minMatchScore: number;
+    };
 }
 
 export interface RecruiterProfile {

@@ -97,10 +97,13 @@ export default function UsersHomeScreen() {
     }, [loadFeed]);
 
     const filteredFeed = useMemo(() => {
-        return feedData.filter(item =>
-            item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.user.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        const query = searchQuery.toLowerCase();
+        return feedData.filter(item => {
+            const content = (item.content || '').toLowerCase();
+            const user = (item.user || '').toLowerCase();
+
+            return content.includes(query) || user.includes(query);
+        });
     }, [searchQuery, feedData]);
 
     return (

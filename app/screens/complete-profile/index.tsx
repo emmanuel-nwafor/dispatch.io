@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -67,6 +67,22 @@ export default function CompleteProfileScreen() {
 
     const totalSteps = 8;
 
+    // Load draft on mount
+    useEffect(() => {
+        const loadDraft = async () => {
+            const savedData = await storage.getItem('profile_draft');
+            if (savedData) {
+                setFormData(JSON.parse(savedData));
+            }
+        };
+        loadDraft();
+    }, []);
+
+    // Save draft whenever formData changes
+    useEffect(() => {
+        storage.saveItem('profile_draft', JSON.stringify(formData));
+    }, [formData]);
+
     const validateCurrentStep = () => {
         if (step === 1) {
             if (!formData.fullName.trim() || !formData.headline.trim()) {
@@ -103,26 +119,59 @@ export default function CompleteProfileScreen() {
         setLoading(true);
         try {
             const mappedRole = storeRole === 'employer' ? 'recruiter' : 'seeker';
+
+            // CONSTRUCT PAYLOAD
             const payload = {
                 role: mappedRole,
                 fullName: formData.fullName,
                 headline: formData.headline,
                 bio: formData.bio,
+                // Check if your backend expects an object or a string for location
                 location: `${formData.location.state}, ${formData.location.country}`,
                 skills: formData.skills,
                 industry: formData.industry,
-                avatar: formData.profileImage,
-                coverImage: formData.coverImage
+                avatar: formData.profileImage, // Ensure this is the correct format (URI or Base64)
+                coverImage: formData.coverImage,
+                // Add these if your backend requires them
+                experience: formData.experience,
+                education: formData.education,
+                languages: formData.languages,
+                birthday: formData.birthday,
+                gender: formData.gender,
+                portfolioUrl: formData.portfolioUrl,
+                linkedInUrl: formData.linkedInUrl,
             };
 
-            const response = await api.completeProfile(payload);
-            await storage.saveUser(response.user);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // DEBUG LOGGING
+            console.log('--- SUBMITTING PROFILE PAYLOAD ---');
+            console.log(JSON.stringify(payload, null, 2));
 
+            const response = await api.completeProfile(payload);
+
+            console.log('--- SERVER RESPONSE ---', response);
+
+            await storage.saveUser(response.user);
+            await storage.removeItem('profile_draft'); // Clear draft on success
+
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Toast.show({ type: 'success', text1: 'Profile Complete!' });
+
             router.replace(mappedRole === 'recruiter' ? '/screens/(recruiters)' : '/screens/(home)');
         } catch (error: any) {
-            Toast.show({ type: 'error', text1: 'Error', text2: error.message });
+            console.error('--- PROFILE SUBMISSION ERROR ---');
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                console.log('Data:', error.response.data);
+                console.log('Status:', error.response.status);
+            } else {
+                console.log('Message:', error.message);
+            }
+
+            Toast.show({
+                type: 'error',
+                text1: 'Submission Failed',
+                text2: error.response?.data?.message || error.message
+            });
         } finally {
             setLoading(false);
         }
@@ -141,7 +190,6 @@ export default function CompleteProfileScreen() {
             <StatusBar style={isDark ? 'light' : 'dark'} />
             <Stack.Screen options={{ headerShown: false }} />
 
-            {/* Advanced Header with Integrated Stepper */}
             <CompleteProfileHeader
                 title="Complete Profile"
                 onBack={handleBack}
@@ -181,7 +229,6 @@ export default function CompleteProfileScreen() {
                 </AnimatePresence>
             </KeyboardAwareScrollView>
 
-            {/* Fixed Floating Footer */}
             <View style={[styles.footer, { backgroundColor: theme.background, borderTopColor: isDark ? '#2c2c2e' : '#e9ecef' }]}>
                 <TouchableOpacity
                     onPress={handleNext}

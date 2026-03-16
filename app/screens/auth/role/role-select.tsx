@@ -7,8 +7,11 @@ import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Briefcase, User } from 'lucide-react-native';
 import { MotiView } from 'moti';
+import * as Haptics from 'expo-haptics';
+
 import { useUserStore } from '@/hooks/useUserStore';
 import { Colors } from '@/app/constants/Colors';
+import { storage } from '@/app/utils/storage'; // Ensure this path is correct
 
 export default function RoleSelectScreen() {
     const router = useRouter();
@@ -17,16 +20,34 @@ export default function RoleSelectScreen() {
     const isDark = colorScheme === 'dark';
 
     const selectedRole = useUserStore((state) => state.role);
-    const setRole = useUserStore((state) => state.setRole);
+    const setStoreRole = useUserStore((state) => state.setRole);
+
+    const handleRoleSelection = async (role: 'seeker' | 'employer') => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // Log to console for debugging
+        console.log(`--- ROLE SELECTED: ${role} ---`);
+
+        // Save to Store
+        setStoreRole(role);
+
+        // Persist to Storage
+        try {
+            await storage.saveItem('user_role', role);
+        } catch (error) {
+            console.error('Failed to save role to storage:', error);
+        }
+    };
 
     const handleContinue = () => {
         if (selectedRole) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.replace('/screens/complete-profile');
         }
     };
 
     return (
-        <View className="flex-1" style={{ backgroundColor: theme.background }}>
+        <View style={[{ flex: 1, backgroundColor: theme.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style={isDark ? "light" : "dark"} />
 
@@ -37,14 +58,13 @@ export default function RoleSelectScreen() {
                 style={StyleSheet.absoluteFill}
             />
 
-            <SafeAreaView className="flex-1">
-                <View className="flex-1" style={{ paddingHorizontal: wp('6%'), paddingTop: hp('5%') }}>
+            <SafeAreaView style={{ flex: 1 }}>
+                <View style={{ flex: 1, paddingHorizontal: wp('6%'), paddingTop: hp('5%') }}>
                     <MotiView
                         from={{ opacity: 0, translateY: -20 }}
                         animate={{ opacity: 1, translateY: 0 }}
                         transition={{ type: 'timing', duration: 800 }}
-                        className="flex-row items-center"
-                        style={{ marginBottom: hp('4%') }}
+                        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: hp('4%') }}
                     >
                         <Image
                             source={require('@/assets/images/logo.png')}
@@ -52,8 +72,7 @@ export default function RoleSelectScreen() {
                             resizeMode="contain"
                         />
                         <Text
-                            className="ml-2"
-                            style={{ fontFamily: 'Outfit-Bold', fontSize: wp('5.5%'), color: theme.text }}
+                            style={{ marginLeft: wp('2%'), fontFamily: 'Outfit-Bold', fontSize: wp('5.5%'), color: theme.text }}
                         >
                             dispatch.io
                         </Text>
@@ -68,38 +87,43 @@ export default function RoleSelectScreen() {
                             Choose your role
                         </Text>
                         <Text
-                            className="mt-1"
-                            style={{ fontFamily: 'Outfit-Medium', fontSize: wp('4.5%'), color: isDark ? '#a1a1aa' : '#6b7280' }}
+                            style={{ marginTop: hp('0.5%'), fontFamily: 'Outfit-Medium', fontSize: wp('4.5%'), color: isDark ? '#a1a1aa' : '#6b7280' }}
                         >
                             Select how you want to use the platform.
                         </Text>
                     </MotiView>
 
-                    <View className="flex-col" style={{ marginTop: hp('6%'), gap: hp('2%') }}>
-                        <TouchableOpacity activeOpacity={0.9} onPress={() => setRole('seeker')}>
+                    <View style={{ flexDirection: 'column', marginTop: hp('6%'), gap: hp('2.5%') }}>
+                        {/* Job Seeker Role */}
+                        <TouchableOpacity activeOpacity={0.9} onPress={() => handleRoleSelection('seeker')}>
                             <MotiView
                                 animate={{
                                     scale: selectedRole === 'seeker' ? 1.02 : 1,
                                     borderColor: selectedRole === 'seeker' ? theme.brand : isDark ? '#27272a' : '#e4e4e7',
                                     backgroundColor: selectedRole === 'seeker' ? `${theme.brand}10` : isDark ? '#18181b' : '#f4f4f5',
                                 }}
-                                className="flex-row items-center border rounded-[24px]"
-                                style={{ padding: wp('5%') }}
+                                transition={{ type: 'timing', duration: 200 }}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    borderWidth: 1,
+                                    borderRadius: wp('6%'),
+                                    padding: wp('5%')
+                                }}
                             >
                                 <View
-                                    className="rounded-[14px]"
                                     style={{
                                         padding: wp('3%'),
+                                        borderRadius: wp('3.5%'),
                                         backgroundColor: selectedRole === 'seeker' ? theme.brand : (isDark ? '#27272a' : '#e4e4e7')
                                     }}
                                 >
-                                    <User size={24} color={selectedRole === 'seeker' ? (isDark ? '#000' : '#fff') : (isDark ? '#a1a1aa' : '#6b7280')} />
+                                    <User size={wp('6%')} color={selectedRole === 'seeker' ? (isDark ? '#000' : '#fff') : (isDark ? '#a1a1aa' : '#6b7280')} />
                                 </View>
-                                <View className="flex-1 ml-4">
+                                <View style={{ flex: 1, marginLeft: wp('4%') }}>
                                     <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4.8%'), color: theme.text }}>Job Seeker</Text>
                                     <Text
-                                        className="mt-1"
-                                        style={{ fontFamily: 'Outfit-Medium', fontSize: wp('3.6%'), color: isDark ? '#a1a1aa' : '#6b7280' }}
+                                        style={{ marginTop: hp('0.5%'), fontFamily: 'Outfit-Medium', fontSize: wp('3.6%'), color: isDark ? '#a1a1aa' : '#6b7280' }}
                                     >
                                         Looking for my next opportunity.
                                     </Text>
@@ -107,30 +131,36 @@ export default function RoleSelectScreen() {
                             </MotiView>
                         </TouchableOpacity>
 
-                        <TouchableOpacity activeOpacity={0.9} onPress={() => setRole('employer')}>
+                        {/* Recruiter Role */}
+                        <TouchableOpacity activeOpacity={0.9} onPress={() => handleRoleSelection('employer')}>
                             <MotiView
                                 animate={{
                                     scale: selectedRole === 'employer' ? 1.02 : 1,
                                     borderColor: selectedRole === 'employer' ? theme.brand : isDark ? '#27272a' : '#e4e4e7',
                                     backgroundColor: selectedRole === 'employer' ? `${theme.brand}10` : isDark ? '#18181b' : '#f4f4f5',
                                 }}
-                                className="flex-row items-center border rounded-[24px]"
-                                style={{ padding: wp('5%') }}
+                                transition={{ type: 'timing', duration: 200 }}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    borderWidth: 1,
+                                    borderRadius: wp('6%'),
+                                    padding: wp('5%')
+                                }}
                             >
                                 <View
-                                    className="rounded-[14px]"
                                     style={{
                                         padding: wp('3%'),
+                                        borderRadius: wp('3.5%'),
                                         backgroundColor: selectedRole === 'employer' ? theme.brand : (isDark ? '#27272a' : '#e4e4e7')
                                     }}
                                 >
-                                    <Briefcase size={24} color={selectedRole === 'employer' ? (isDark ? '#000' : '#fff') : (isDark ? '#a1a1aa' : '#6b7280')} />
+                                    <Briefcase size={wp('6%')} color={selectedRole === 'employer' ? (isDark ? '#000' : '#fff') : (isDark ? '#a1a1aa' : '#6b7280')} />
                                 </View>
-                                <View className="flex-1 ml-4">
+                                <View style={{ flex: 1, marginLeft: wp('4%') }}>
                                     <Text style={{ fontFamily: 'Outfit-Bold', fontSize: wp('4.8%'), color: theme.text }}>Recruiter</Text>
                                     <Text
-                                        className="mt-1"
-                                        style={{ fontFamily: 'Outfit-Medium', fontSize: wp('3.6%'), color: isDark ? '#a1a1aa' : '#6b7280' }}
+                                        style={{ marginTop: hp('0.5%'), fontFamily: 'Outfit-Medium', fontSize: wp('3.6%'), color: isDark ? '#a1a1aa' : '#6b7280' }}
                                     >
                                         I want to hire top talent.
                                     </Text>
@@ -139,18 +169,24 @@ export default function RoleSelectScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    <View className="flex-1" />
+                    <View style={{ flex: 1 }} />
 
                     <MotiView animate={{ opacity: selectedRole ? 1 : 0.5, translateY: selectedRole ? 0 : 10 }}>
                         <TouchableOpacity
-                            className="rounded-[20px] items-center shadow-md"
+                            disabled={!selectedRole}
+                            onPress={handleContinue}
                             style={{
+                                borderRadius: wp('5%'),
+                                alignItems: 'center',
                                 paddingVertical: hp('2.2%'),
                                 marginBottom: hp('2.5%'),
-                                backgroundColor: selectedRole ? (isDark ? theme.brand : '#000') : (isDark ? '#27272a' : '#e4e4e7')
+                                backgroundColor: selectedRole ? (isDark ? theme.brand : '#000') : (isDark ? '#27272a' : '#e4e4e7'),
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 10,
+                                elevation: 5,
                             }}
-                            onPress={handleContinue}
-                            disabled={!selectedRole}
                         >
                             <Text style={{
                                 fontFamily: 'Outfit-Bold',
@@ -163,8 +199,7 @@ export default function RoleSelectScreen() {
                     </MotiView>
 
                     <TouchableOpacity
-                        className="items-center"
-                        style={{ marginBottom: hp('4%') }}
+                        style={{ alignItems: 'center', marginBottom: hp('4%') }}
                         onPress={() => router.push('/screens/auth/login')}
                     >
                         <Text style={{ fontFamily: 'Outfit-Medium', fontSize: wp('4%'), color: isDark ? '#a1a1aa' : '#6b7280' }}>
