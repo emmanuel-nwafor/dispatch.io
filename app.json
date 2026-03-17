@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/logo-v2.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.emmanuelnwafor.dispatchio"
     },
     "web": {
       "output": "static",
@@ -44,6 +45,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "51e0883c-7091-4cb8-95c6-dcfeb6758b2c"
+      }
     }
   }
 }
