@@ -136,10 +136,6 @@ export default function ExpertiseStep({ formData, setFormData, theme, inputStyle
                     <AnimatePresence>
                         {formData.skills.map((s: string, i: number) => (
                             <MotiView
-                                from={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.8, opacity: 0 }}
-                                transition={{ type: 'spring', damping: 15 }}
                                 key={s}
                                 style={[styles.tag, { backgroundColor: theme.brand + '15', borderColor: theme.brand }]}
                             >
@@ -199,7 +195,6 @@ const styles = StyleSheet.create({
         width: hp('7%'),
         height: hp('7%'),
         borderRadius: wp('4%'),
-        // itemsCenter: 'center',
         justifyContent: 'center',
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },

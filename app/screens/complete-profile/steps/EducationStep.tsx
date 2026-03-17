@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { MotiView, AnimatePresence } from 'moti';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
@@ -64,20 +65,21 @@ export default function EducationStep({ formData, setFormData, theme, isDark }: 
 
     return (
         <View style={{ flex: 1 }}>
-            <View style={{ marginBottom: hp('3%') }}>
-                <Text style={{ color: theme.text, fontSize: wp('8%'), fontFamily: 'Outfit-Bold' }}>Education</Text>
-                <Text style={{ color: theme.tabIconDefault, fontSize: wp('4.2%'), fontFamily: 'Outfit-Medium' }}>Your academic journey.</Text>
-            </View>
-
-            <AnimatePresence>
+            <AnimatePresence exitBeforeEnter>
                 {!isAdding ? (
+                    /* LIST VIEW - FULL SCREEN STATE */
                     <MotiView
                         key="list"
-                        from={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        from={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ type: 'timing', duration: 200 }}
                     >
+                        <View style={{ marginBottom: hp('3%') }}>
+                            <Text style={{ color: theme.text, fontSize: wp('8%'), fontFamily: 'Outfit-Bold' }}>Education</Text>
+                            <Text style={{ color: theme.tabIconDefault, fontSize: wp('4.2%'), fontFamily: 'Outfit-Medium' }}>Your academic journey and qualifications.</Text>
+                        </View>
+
                         <View style={{ gap: 15, marginBottom: hp('3%') }}>
                             {formData.education.length > 0 ? (
                                 formData.education.map((edu: any) => (
@@ -109,72 +111,91 @@ export default function EducationStep({ formData, setFormData, theme, isDark }: 
                         </TouchableOpacity>
                     </MotiView>
                 ) : (
+                    /* FORM VIEW - FULL SCREEN ENTRY */
                     <MotiView
                         key="form"
-                        from={{ opacity: 0, translateY: 20 }}
-                        animate={{ opacity: 1, translateY: 0 }}
-                        exit={{ opacity: 0, translateY: 20 }}
-                        style={[styles.inlineForm, { backgroundColor: isDark ? '#161618' : '#fff', borderColor: isDark ? '#2c2c2e' : '#e5e7eb' }]}
+                        from={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ type: 'timing', duration: 200 }}
+                        style={{ flex: 1 }}
                     >
                         <View style={styles.formHeader}>
-                            <Text style={[styles.formTitle, { color: theme.text }]}>New Qualification</Text>
-                            <TouchableOpacity onPress={() => setIsAdding(false)}>
-                                <Feather name="x-circle" size={22} color={theme.tabIconDefault} />
+                            <TouchableOpacity
+                                onPress={() => setIsAdding(false)}
+                                style={{ flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Feather name="arrow-left" size={24} color={theme.text} />
+                                <Text style={[styles.formTitle, { color: theme.text, marginLeft: 10 }]}>Add Qualification</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.inputLabel}>INSTITUTION <Text style={{ color: '#ff4444' }}>*</Text></Text>
-                        <TextInput
-                            placeholder="School (e.g. Stanford University)"
-                            placeholderTextColor={theme.tabIconDefault}
-                            style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
-                            value={currentEdu.school}
-                            onChangeText={(t) => setCurrentEdu({ ...currentEdu, school: t })}
-                        />
-
-                        <Text style={styles.inputLabel}>QUALIFICATION <Text style={{ color: '#ff4444' }}>*</Text></Text>
-                        <TextInput
-                            placeholder="Degree (e.g. Bachelor of Science)"
-                            placeholderTextColor={theme.tabIconDefault}
-                            style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
-                            value={currentEdu.degree}
-                            onChangeText={(t) => setCurrentEdu({ ...currentEdu, degree: t })}
-                        />
-
-                        <TextInput
-                            placeholder="Field of Study (e.g. Computer Science)"
-                            placeholderTextColor={theme.tabIconDefault}
-                            style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
-                            value={currentEdu.field}
-                            onChangeText={(t) => setCurrentEdu({ ...currentEdu, field: t })}
-                        />
-
-                        <Text style={styles.inputLabel}>TIMELINE <Text style={{ color: '#ff4444' }}>*</Text></Text>
-                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-                            <TextInput
-                                placeholder="Start Year"
-                                placeholderTextColor={theme.tabIconDefault}
-                                keyboardType="numeric"
-                                style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
-                                value={currentEdu.startDate}
-                                onChangeText={(t) => setCurrentEdu({ ...currentEdu, startDate: t })}
-                            />
-                            <TextInput
-                                placeholder="End Year"
-                                placeholderTextColor={theme.tabIconDefault}
-                                keyboardType="numeric"
-                                style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
-                                value={currentEdu.endDate}
-                                onChangeText={(t) => setCurrentEdu({ ...currentEdu, endDate: t })}
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={handleSave}
-                            style={[styles.saveInlineBtn, { backgroundColor: theme.brand }]}
+                        <KeyboardAwareScrollView
+                            enableOnAndroid={true}
+                            extraScrollHeight={100}
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 40 }}
                         >
-                            <Text style={styles.saveBtnText}>Save Education</Text>
-                        </TouchableOpacity>
+                            <Text style={styles.inputLabel}>INSTITUTION <Text style={{ color: '#ff4444' }}>*</Text></Text>
+                            <TextInput
+                                placeholder="School (e.g. Stanford University)"
+                                placeholderTextColor={theme.tabIconDefault}
+                                style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
+                                value={currentEdu.school}
+                                onChangeText={(t) => setCurrentEdu({ ...currentEdu, school: t })}
+                            />
+
+                            <Text style={styles.inputLabel}>QUALIFICATION <Text style={{ color: '#ff4444' }}>*</Text></Text>
+                            <TextInput
+                                placeholder="Degree (e.g. Bachelor of Science)"
+                                placeholderTextColor={theme.tabIconDefault}
+                                style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
+                                value={currentEdu.degree}
+                                onChangeText={(t) => setCurrentEdu({ ...currentEdu, degree: t })}
+                            />
+
+                            <TextInput
+                                placeholder="Field of Study (e.g. Psychology)"
+                                placeholderTextColor={theme.tabIconDefault}
+                                style={[styles.textInput, { backgroundColor: inputBg, color: theme.text }]}
+                                value={currentEdu.field}
+                                onChangeText={(t) => setCurrentEdu({ ...currentEdu, field: t })}
+                            />
+
+                            <Text style={styles.inputLabel}>TIMELINE <Text style={{ color: '#ff4444' }}>*</Text></Text>
+                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 25 }}>
+                                <TextInput
+                                    placeholder="Start Year"
+                                    placeholderTextColor={theme.tabIconDefault}
+                                    keyboardType="numeric"
+                                    style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
+                                    value={currentEdu.startDate}
+                                    onChangeText={(t) => setCurrentEdu({ ...currentEdu, startDate: t })}
+                                />
+                                <TextInput
+                                    placeholder="End Year"
+                                    placeholderTextColor={theme.tabIconDefault}
+                                    keyboardType="numeric"
+                                    style={[styles.textInput, { flex: 1, backgroundColor: inputBg, color: theme.text }]}
+                                    value={currentEdu.endDate}
+                                    onChangeText={(t) => setCurrentEdu({ ...currentEdu, endDate: t })}
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={handleSave}
+                                style={[styles.saveInlineBtn, { backgroundColor: theme.brand }]}
+                            >
+                                <Text style={styles.saveBtnText}>Save Education</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => setIsAdding(false)}
+                                style={{ marginTop: 25, alignItems: 'center' }}
+                            >
+                                <Text style={{ color: theme.tabIconDefault, fontFamily: 'Outfit-Medium' }}>Cancel</Text>
+                            </TouchableOpacity>
+                        </KeyboardAwareScrollView>
                     </MotiView>
                 )}
             </AnimatePresence>
@@ -193,54 +214,51 @@ const styles = StyleSheet.create({
     },
     addBtn: {
         padding: 18,
-        borderRadius: 20,
+        borderRadius: wp('4%'),
         borderWidth: 2,
         borderStyle: 'dashed',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    inlineForm: {
-        padding: 20,
-        borderRadius: 25,
-        borderWidth: 1,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.05,
-        shadowRadius: 20,
-        elevation: 2,
-    },
     formHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 25,
+        paddingTop: 5
     },
     formTitle: {
         fontFamily: 'Outfit-Bold',
-        fontSize: wp('4.5%'),
+        fontSize: wp('6%'),
     },
     inputLabel: {
         color: '#8e8e93',
         fontFamily: 'Outfit-Bold',
-        fontSize: wp('3%'),
-        marginBottom: 8,
-        letterSpacing: 1
+        fontSize: wp('3.2%'),
+        marginBottom: 10,
+        letterSpacing: 1,
+        marginTop: 10
     },
     textInput: {
-        padding: 16,
-        borderRadius: 12,
+        padding: 18,
+        borderRadius: wp('4%'),
         fontFamily: 'Outfit-Medium',
-        marginBottom: 12,
+        marginBottom: 15,
+        fontSize: wp('4%'),
     },
     saveInlineBtn: {
-        padding: 16,
-        borderRadius: 12,
+        padding: 18,
+        borderRadius: wp('4%'),
         alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3
     },
     saveBtnText: {
         fontFamily: 'Outfit-Bold',
         color: '#000',
-        fontSize: wp('4%'),
+        fontSize: wp('4.5%'),
     }
 });

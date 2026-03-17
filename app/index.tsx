@@ -57,6 +57,7 @@ export default function Index() {
 
         if (token && user) {
           const isProfileComplete = user.fullName && user.headline;
+          console.log(user && token)
 
           if (!isProfileComplete) {
             router.replace('/screens/complete-profile');

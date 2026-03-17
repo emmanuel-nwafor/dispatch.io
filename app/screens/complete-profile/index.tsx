@@ -22,7 +22,7 @@ import { useUserStore } from '@/hooks/useUserStore';
 import { storage } from '@/app/utils/storage';
 import { user as api } from '@/app/data/api';
 
-// Steps & Header
+// Steps
 import IdentityStep from './steps/IdentityStep';
 import AboutStep from './steps/AboutStep';
 import ExpertiseStep from './steps/ExpertiseStep';
@@ -31,8 +31,11 @@ import EducationStep from './steps/EducationStep';
 import VisualsStep from './steps/VisualsStep';
 import DocumentsStep from './steps/DocumentsStep';
 import PersonalStep from './steps/PersonalStep';
+
+// Components
 import CompleteProfileHeader from '@/components/profile/CompleteProfileHeader';
 import LocationPopup from '@/components/popups/LocationPopup';
+import SuccessModal from '@/components/modals/SuccessModal';
 
 export default function CompleteProfileScreen() {
     const router = useRouter();
@@ -44,6 +47,7 @@ export default function CompleteProfileScreen() {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const [locationModalVisible, setLocationModalVisible] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const [formData, setFormData] = useState({
         fullName: '',
@@ -67,18 +71,14 @@ export default function CompleteProfileScreen() {
 
     const totalSteps = 8;
 
-    // Load draft on mount
     useEffect(() => {
         const loadDraft = async () => {
             const savedData = await storage.getItem('profile_draft');
-            if (savedData) {
-                setFormData(JSON.parse(savedData));
-            }
+            if (savedData) setFormData(JSON.parse(savedData));
         };
         loadDraft();
     }, []);
 
-    // Save draft whenever formData changes
     useEffect(() => {
         storage.saveItem('profile_draft', JSON.stringify(formData));
     }, [formData]);
@@ -100,7 +100,6 @@ export default function CompleteProfileScreen() {
 
     const handleNext = () => {
         if (!validateCurrentStep()) return;
-
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         if (step < totalSteps) {
             setStep(prev => prev + 1);
@@ -119,20 +118,16 @@ export default function CompleteProfileScreen() {
         setLoading(true);
         try {
             const mappedRole = storeRole === 'employer' ? 'recruiter' : 'seeker';
-
-            // CONSTRUCT PAYLOAD
             const payload = {
                 role: mappedRole,
                 fullName: formData.fullName,
                 headline: formData.headline,
                 bio: formData.bio,
-                // Check if your backend expects an object or a string for location
                 location: `${formData.location.state}, ${formData.location.country}`,
                 skills: formData.skills,
                 industry: formData.industry,
-                avatar: formData.profileImage, // Ensure this is the correct format (URI or Base64)
+                avatar: formData.profileImage,
                 coverImage: formData.coverImage,
-                // Add these if your backend requires them
                 experience: formData.experience,
                 education: formData.education,
                 languages: formData.languages,
@@ -142,39 +137,26 @@ export default function CompleteProfileScreen() {
                 linkedInUrl: formData.linkedInUrl,
             };
 
-            // DEBUG LOGGING
-            console.log('--- SUBMITTING PROFILE PAYLOAD ---');
-            console.log(JSON.stringify(payload, null, 2));
-
             const response = await api.completeProfile(payload);
-
-            console.log('--- SERVER RESPONSE ---', response);
-
             await storage.saveUser(response.user);
-            await storage.removeItem('profile_draft'); // Clear draft on success
+            await storage.removeItem('profile_draft');
 
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Toast.show({ type: 'success', text1: 'Profile Complete!' });
-
-            router.replace(mappedRole === 'recruiter' ? '/screens/(recruiters)' : '/screens/(home)');
+            setLoading(false);
+            setShowSuccessModal(true);
         } catch (error: any) {
-            console.error('--- PROFILE SUBMISSION ERROR ---');
-            if (error.response) {
-                // The request was made and the server responded with a status code
-                console.log('Data:', error.response.data);
-                console.log('Status:', error.response.status);
-            } else {
-                console.log('Message:', error.message);
-            }
-
+            setLoading(false);
             Toast.show({
                 type: 'error',
                 text1: 'Submission Failed',
                 text2: error.response?.data?.message || error.message
             });
-        } finally {
-            setLoading(false);
         }
+    };
+
+    const handleFinalRedirect = () => {
+        const mappedRole = storeRole === 'employer' ? 'recruiter' : 'seeker';
+        setShowSuccessModal(false);
+        router.replace(mappedRole === 'recruiter' ? '/screens/(recruiters)' : '/screens/(home)');
     };
 
     const inputStyle = {
@@ -207,10 +189,10 @@ export default function CompleteProfileScreen() {
                 <AnimatePresence exitBeforeEnter>
                     <MotiView
                         key={step}
-                        from={{ opacity: 0, scale: 0.95, translateY: 10 }}
-                        animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                        exit={{ opacity: 0, scale: 1.05, translateY: -10 }}
-                        transition={{ type: 'timing', duration: 400 }}
+                        from={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ type: 'timing', duration: 200 }}
                     >
                         {(() => {
                             switch (step) {
@@ -257,6 +239,13 @@ export default function CompleteProfileScreen() {
                 }}
                 theme={theme}
                 isDark={isDark}
+            />
+
+            <SuccessModal
+                visible={showSuccessModal}
+                onClose={handleFinalRedirect}
+                title="Profile Ready!"
+                message="Your professional profile has been created successfully."
             />
         </SafeAreaView>
     );

@@ -16,7 +16,7 @@ interface VisualsStepProps {
 
 export default function VisualsStep({ formData, setFormData, theme, isDark }: VisualsStepProps) {
     const [uploading, setUploading] = React.useState<{ profile?: boolean, cover?: boolean }>({});
-    const darkGreen = "#006400"; // Specific ActivityIndicator color from your preferences
+    const darkGreen = "#006400";
 
     const uploadFile = async (uri: string, type: 'profile' | 'cover') => {
         setUploading(prev => ({ ...prev, [type]: true }));
@@ -45,7 +45,6 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
                 });
             }
         } catch (error: any) {
-            console.error("Upload error:", error);
             Toast.show({
                 type: 'error',
                 text1: 'Upload Failed',
@@ -60,7 +59,7 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: type === 'profile' ? [1, 1] : [16, 9],
+            aspect: type === 'profile' ? [1, 1] : [16, 6], // More like a professional banner aspect
             quality: 0.8,
         });
 
@@ -71,11 +70,11 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
     };
 
     return (
-        <View>
-            <View style={{ marginBottom: hp('4%') }}>
-                <Text style={{ color: theme.text, fontSize: wp('8%') }} className="font-[Outfit-Bold] mb-2">Visuals</Text>
-                <Text style={{ color: theme.tabIconDefault, fontSize: wp('4.5%') }} className="font-[Outfit-Medium]">
-                    A picture is worth a thousand lines of code.
+        <View style={{ flex: 1 }}>
+            <View style={{ marginBottom: hp('3%') }}>
+                <Text style={{ color: theme.text, fontSize: wp('8%'), fontFamily: 'Outfit-Bold' }}>Visual Identity</Text>
+                <Text style={{ color: theme.tabIconDefault, fontSize: wp('4.2%'), fontFamily: 'Outfit-Medium' }}>
+                    Make a great first impression with your profile visuals.
                 </Text>
             </View>
 
@@ -84,25 +83,24 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
                 <TouchableOpacity
                     activeOpacity={0.9}
                     onPress={() => pickMedia('cover')}
-                    style={[styles.coverContainer, { backgroundColor: isDark ? '#1a1a1b' : '#f3f4f6' }]}
-                    className="overflow-hidden"
+                    style={[styles.coverContainer, { backgroundColor: isDark ? '#2c2c2e' : '#e5e7eb' }]}
                 >
                     {formData.coverImage ? (
-                        <Image source={{ uri: formData.coverImage }} className="w-full h-full" />
+                        <Image source={{ uri: formData.coverImage }} style={styles.fullImage} />
                     ) : (
-                        <View className="items-center justify-center h-full">
+                        <View style={styles.placeholderCenter}>
                             {uploading.cover ? (
                                 <ActivityIndicator color={darkGreen} />
                             ) : (
                                 <>
-                                    <Feather name="image" size={30} color={theme.tabIconDefault} />
-                                    <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Medium] mt-2">Add Banner</Text>
+                                    <Feather name="plus" size={24} color={theme.tabIconDefault} />
+                                    <Text style={{ color: theme.tabIconDefault, fontFamily: 'Outfit-Bold', fontSize: wp('3.5%'), marginTop: 4 }}>ADD BANNER</Text>
                                 </>
                             )}
                         </View>
                     )}
-                    <View style={styles.editOverlay} className="bg-black/20">
-                        <Ionicons name="camera" size={20} color="white" />
+                    <View style={styles.bannerOverlay}>
+                        <Ionicons name="camera" size={18} color="white" />
                     </View>
                 </TouchableOpacity>
 
@@ -112,43 +110,51 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
                         activeOpacity={0.9}
                         onPress={() => pickMedia('profile')}
                         disabled={uploading.profile}
-                        style={[styles.avatarContainer, { borderColor: theme.background, backgroundColor: isDark ? '#27272a' : '#fff' }]}
-                        className="shadow-xl"
+                        style={[styles.avatarContainer, { borderColor: theme.background, backgroundColor: isDark ? '#1c1c1e' : '#f8f9fa' }]}
                     >
                         {formData.profileImage ? (
-                            <Image source={{ uri: formData.profileImage }} className="w-full h-full" />
+                            <Image source={{ uri: formData.profileImage }} style={styles.fullImage} />
                         ) : (
-                            <View className="items-center justify-center h-full">
+                            <View style={styles.placeholderCenter}>
                                 {uploading.profile ? (
                                     <ActivityIndicator color={darkGreen} />
                                 ) : (
-                                    <Feather name="user" size={40} color={theme.tabIconDefault} />
+                                    <Feather name="user" size={wp('10%')} color={theme.tabIconDefault} />
                                 )}
                             </View>
                         )}
-                        <View style={[styles.avatarEditBadge, { backgroundColor: theme.brand }]} className="border-2 border-zinc-900 dark:border-black">
+                        <View style={[styles.avatarEditBadge, { backgroundColor: theme.brand }]}>
                             {uploading.profile ? (
                                 <ActivityIndicator size="small" color="black" />
                             ) : (
-                                <Ionicons name="add" size={16} color="black" />
+                                <Ionicons name="camera" size={14} color="black" />
                             )}
                         </View>
                     </TouchableOpacity>
                 </View>
             </View>
 
-            <View style={{ paddingHorizontal: wp('2%'), marginTop: hp('2%') }}>
-                <Text style={{ color: theme.text, fontSize: wp('5.5%') }} className="font-[Outfit-Bold] mb-1">Profile Preview</Text>
-                <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Medium] mb-4">This is how you'll appear to others.</Text>
+            <View style={{ marginTop: hp('4%') }}>
+                <Text style={{ color: theme.text, fontSize: wp('5%'), fontFamily: 'Outfit-Bold', marginBottom: hp('1.5%') }}>Card Preview</Text>
 
-                <View className="p-6 rounded-[32px] bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
-                    <Text style={{ color: theme.text, fontSize: wp('6%') }} className="font-[Outfit-Bold]">{formData.fullName || "Your Name"}</Text>
-                    <Text style={{ color: theme.brand, fontSize: wp('4%') }} className="font-[Outfit-Medium] mb-4">{formData.headline || "Hustler / Designer / Engineer"}</Text>
+                <View style={[styles.previewCard, { backgroundColor: isDark ? '#161618' : '#fff', borderColor: isDark ? '#2c2c2e' : '#f1f1f1' }]}>
+                    <View style={styles.previewHeader}>
+                        <Text style={{ color: theme.text, fontSize: wp('5.5%'), fontFamily: 'Outfit-Bold' }} numberOfLines={1}>
+                            {formData.fullName || "Your Full Name"}
+                        </Text>
+                        <View style={[styles.roleBadge, { backgroundColor: theme.brand + '20' }]}>
+                            <Text style={{ color: theme.brand, fontSize: wp('3%'), fontFamily: 'Outfit-Bold' }}>PRO</Text>
+                        </View>
+                    </View>
 
-                    <View className="flex-row items-center mb-2">
-                        <Feather name="map-pin" size={14} color={theme.tabIconDefault} className="mr-2" />
-                        <Text style={{ color: theme.tabIconDefault }} className="font-[Outfit-Medium]">
-                            {formData.location?.city ? `${formData.location.city}, ${formData.location.country}` : "Earth"}
+                    <Text style={{ color: isDark ? '#a1a1aa' : '#666', fontSize: wp('4%'), fontFamily: 'Outfit-Medium', marginBottom: 12 }}>
+                        {formData.headline || "Your professional headline goes here"}
+                    </Text>
+
+                    <View style={styles.locationRow}>
+                        <Ionicons name="location-outline" size={16} color={theme.tabIconDefault} />
+                        <Text style={{ color: theme.tabIconDefault, fontFamily: 'Outfit-Medium', marginLeft: 4 }}>
+                            {formData.location?.state ? `${formData.location.state}, ${formData.location.country}` : "Location not set"}
                         </Text>
                     </View>
                 </View>
@@ -159,43 +165,86 @@ export default function VisualsStep({ formData, setFormData, theme, isDark }: Vi
 
 const styles = StyleSheet.create({
     profileSection: {
-        height: hp('30%'),
+        height: hp('26%'),
         position: 'relative',
-        marginBottom: hp('2%')
-    },
-    coverContainer: {
-        height: hp('20%'),
-        borderRadius: wp('8%'),
         width: '100%',
     },
-    editOverlay: {
+    coverContainer: {
+        height: hp('18%'),
+        borderRadius: wp('4%'),
+        width: '100%',
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+    },
+    fullImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    placeholderCenter: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bannerOverlay: {
         position: 'absolute',
-        top: 15,
-        right: 15,
-        padding: 10,
-        borderRadius: 15,
+        bottom: 12,
+        right: 12,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        padding: 8,
+        borderRadius: 10,
     },
     avatarWrapper: {
         position: 'absolute',
         bottom: 0,
-        left: wp('6%'),
+        left: wp('5%'),
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 15,
+        elevation: 10,
     },
     avatarContainer: {
-        width: wp('28%'),
-        height: wp('28%'),
-        borderRadius: wp('10%'),
-        borderWidth: 6,
+        width: wp('26%'),
+        height: wp('26%'),
+        borderRadius: wp('6%'), // Twitter/LinkedIn style squircle
+        borderWidth: 4,
         overflow: 'hidden',
     },
     avatarEditBadge: {
         position: 'absolute',
         bottom: 0,
         right: 0,
-        width: 30,
-        height: 30,
-        borderRadius: 12,
+        width: wp('8%'),
+        height: wp('8%'),
+        borderTopLeftRadius: wp('4%'),
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 3,
-    }
+    },
+    previewCard: {
+        padding: 24,
+        borderRadius: wp('6%'),
+        borderWidth: 1,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
+    },
+    previewHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    roleBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    locationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
 });
