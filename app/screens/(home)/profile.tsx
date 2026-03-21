@@ -251,7 +251,6 @@ export default function SeekersProfileScreen() {
                     {[
                         { label: 'Applied', value: user?.appliedJobsCount || 0, icon: 'send', color: '#006400' },
                         { label: 'Match', value: (user?.profile?.autoApply?.minMatchScore || 0) + '%', icon: 'flash', color: '#006400' },
-                        { label: 'Exp', value: (user?.profile?.experienceYear || 0) + 'y', icon: 'medal', color: '#006400' },
                     ].map((item, i) => (
                         <View
                             key={i}

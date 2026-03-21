@@ -125,7 +125,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
     return (
         <TouchableOpacity
             activeOpacity={1}
-            // onPress={onPress}
             onPress={() => router.push(`/screens/feed/${item.id}`)}
             style={[styles.tweetContainer, { borderBottomColor: isDark ? '#2f3336' : '#eff3f4' }]}
         >

@@ -53,13 +53,15 @@ export interface Post {
 export interface User {
     createdAt: number;
     _id: string;
+    id?: string;
     email: string;
     role: string;
     isProfileCompleted: boolean;
     avatar?: string;
     coverImage?: string;
-    profile: UserDetails;
+    profile?: UserDetails;
     recruiterProfile?: RecruiterProfile;
+    details?: UserDetails | RecruiterProfile;
     appliedJobsCount?: number;
 }
 

@@ -52,28 +52,27 @@ export default function Index() {
         ]),
         Animated.delay(1200),
       ]).start(async () => {
-        const hasSeenOnboarding = await storage.getHasSeenOnboarding();
-
-        if (!hasSeenOnboarding) {
-          router.replace('/screens/onboard/onboarding');
-          return;
-        }
-
         const token = await storage.getToken();
         const user = await storage.getUser();
 
-        if (token && user) {
-          const isProfileComplete = user.isProfileCompleted || (user.fullName && user.headline);
-          console.log(user && token)
+        console.log('[Splash] Token:', token ? 'Exists' : 'Null');
+        console.log('[Splash] User:', user ? 'Exists' : 'Null');
 
-          if (!isProfileComplete) {
+        if (token) {
+          // If token exists, we consider them logged in.
+          // We check the user object for profile completion if it exists locally,
+          // otherwise we default to home to unblock the user.
+          const isProfileComplete = user?.isProfileCompleted || (user?.fullName && user?.headline);
+
+          if (user && !isProfileComplete) {
             router.replace('/screens/complete-profile');
-          } else if (user.role === 'recruiter' || user.role === 'employer') {
+          } else if (user?.role === 'recruiter' || user?.role === 'employer') {
             router.replace('/screens/(recruiters)');
           } else {
             router.replace('/screens/(home)');
           }
         } else {
+          // No token found, redirect to login
           router.replace('/screens/auth/login');
         }
       });

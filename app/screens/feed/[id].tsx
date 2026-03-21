@@ -20,7 +20,7 @@ export default function SingleFeedScreen() {
         const fetchItem = async () => {
             try {
                 const res = await feeds.getFeedItem(id as string);
-                
+
                 // Map backend data to FeedItem props
                 const data = res.data;
                 const mappedItem = {
@@ -41,11 +41,11 @@ export default function SingleFeedScreen() {
                     },
                     attachments: data.images?.map((url: string) => ({ type: 'image', url })) || [],
                 };
-                
+
                 if (data.feedType === 'reel') {
                     mappedItem.attachments = [{ type: 'video', url: data.videoUrl, thumbnail: data.thumbnailUrl }];
                 }
-                
+
                 setItem(mappedItem);
             } catch (error) {
                 console.error('Error fetching feed item', error);
@@ -58,7 +58,7 @@ export default function SingleFeedScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-            <View className="flex-row items-center p-4 border-b" style={{ borderColor: theme.border }}>
+            <View className="flex-row items-center p-4 border-b" style={{ borderColor: '#E2E8F0' }}>
                 <TouchableOpacity onPress={() => router.back()} className="mr-4">
                     <Ionicons name="arrow-back" size={24} color={theme.text} />
                 </TouchableOpacity>

@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/app/constants/Colors';
+import { storage } from '@/app/utils/storage';
 
 const ONBOARDING_DATA = [
     {
@@ -69,6 +70,7 @@ export default function OnboardingScreen() {
             slidesRef.current?.scrollToIndex({ index: currentIndex + 1 });
         } else {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await storage.saveHasSeenOnboarding(true);
             router.push('/screens/auth/role/role-select');
         }
     };
