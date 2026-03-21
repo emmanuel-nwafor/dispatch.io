@@ -60,6 +60,15 @@ export const storage = {
         return await storage.getItem(TOKEN_KEY);
     },
 
+    saveHasSeenOnboarding: async (value: boolean) => {
+        await storage.saveItem('has_seen_onboarding', JSON.stringify(value));
+    },
+
+    getHasSeenOnboarding: async () => {
+        const value = await storage.getItem('has_seen_onboarding');
+        return value ? JSON.parse(value) : false;
+    },
+
     saveUser: async (user: any) => {
         const userStr = JSON.stringify(user);
         await storage.saveItem(USER_KEY, userStr);

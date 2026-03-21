@@ -52,11 +52,18 @@ export default function Index() {
         ]),
         Animated.delay(1200),
       ]).start(async () => {
+        const hasSeenOnboarding = await storage.getHasSeenOnboarding();
+
+        if (!hasSeenOnboarding) {
+          router.replace('/screens/onboard/onboarding');
+          return;
+        }
+
         const token = await storage.getToken();
         const user = await storage.getUser();
 
         if (token && user) {
-          const isProfileComplete = user.fullName && user.headline;
+          const isProfileComplete = user.isProfileCompleted || (user.fullName && user.headline);
           console.log(user && token)
 
           if (!isProfileComplete) {

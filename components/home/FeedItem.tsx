@@ -126,15 +126,13 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
         <TouchableOpacity
             activeOpacity={1}
             // onPress={onPress}
-            onPress={() => router.push("/screens/feed/[id]")}
+            onPress={() => router.push(`/screens/feed/${item.id}`)}
             style={[styles.tweetContainer, { borderBottomColor: isDark ? '#2f3336' : '#eff3f4' }]}
         >
             <View className="flex-row px-4 py-4">
                 {/* Left Column: Avatar */}
                 <TouchableOpacity
-                    onPress={() => router.push({
-                        pathname: "/screens/profile/[id]" as any,
-                    })}
+                    onPress={() => router.push(`/screens/profile/${item.user}` as any)}
                 >
                     <View className="mr-3">
                         <Image source={{ uri: item.avatar }} className="w-12 h-12 rounded-full" />

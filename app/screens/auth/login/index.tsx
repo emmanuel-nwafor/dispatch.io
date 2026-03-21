@@ -21,12 +21,14 @@ import Toast from 'react-native-toast-message';
 import { Colors } from '@/app/constants/Colors';
 import { auth } from '@/app/data/api';
 import { storage } from '@/app/utils/storage';
+import { useUserStore } from '@/hooks/useUserStore';
 
 export default function Login() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
+    const setUser = useUserStore((state) => state.setUser);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -52,6 +54,7 @@ export default function Login() {
                 // Save session data
                 await storage.saveToken(response.token);
                 await storage.saveUser(response.user);
+                setUser(response.user);
 
                 Toast.show({
                     type: 'success',

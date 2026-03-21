@@ -43,6 +43,7 @@ export default function CompleteProfileScreen() {
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
     const storeRole = useUserStore((state) => state.role);
+    const setUser = useUserStore((state) => state.setUser);
 
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
@@ -139,6 +140,7 @@ export default function CompleteProfileScreen() {
 
             const response = await api.completeProfile(payload);
             await storage.saveUser(response.user);
+            setUser(response.user); // Update global state
             await storage.removeItem('profile_draft');
 
             setLoading(false);

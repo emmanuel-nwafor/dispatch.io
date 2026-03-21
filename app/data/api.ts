@@ -309,5 +309,10 @@ export const feeds = {
         return request<{ success: boolean; data: any[] }>(`/feed?page=${page}&limit=${limit}`, {
             method: 'GET',
         });
+    },
+    getFeedItem: (id: string, type?: string) => {
+        return request<{ success: boolean; data: any }>(`/feed/${id}${type ? `?type=${type}` : ''}`, {
+            method: 'GET',
+        });
     }
 };
