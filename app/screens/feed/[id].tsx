@@ -43,7 +43,9 @@ export default function SingleFeedScreen() {
                 };
 
                 if (data.feedType === 'reel') {
-                    mappedItem.attachments = [{ type: 'video', url: data.videoUrl, thumbnail: data.thumbnailUrl }];
+                    // If it's a reel, redirect to the vertical swiper for a better experience
+                    router.replace({ pathname: "/screens/reels/[id]", params: { id: data._id } } as any);
+                    return;
                 }
 
                 setItem(mappedItem);

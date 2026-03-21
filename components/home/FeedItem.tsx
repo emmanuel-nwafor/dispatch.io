@@ -122,10 +122,18 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
         );
     };
 
+    const handlePress = () => {
+        if (item.type === 'reel') {
+            router.push({ pathname: "/screens/reels/[id]", params: { id: item.id } } as any);
+        } else {
+            router.push(`/screens/feed/${item.id}`);
+        }
+    };
+
     return (
         <TouchableOpacity
             activeOpacity={1}
-            onPress={() => router.push(`/screens/feed/${item.id}`)}
+            onPress={handlePress}
             style={[styles.tweetContainer, { borderBottomColor: isDark ? '#2f3336' : '#eff3f4' }]}
         >
             <View className="flex-row px-4 py-4">
