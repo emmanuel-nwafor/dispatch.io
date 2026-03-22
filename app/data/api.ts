@@ -64,6 +64,8 @@ export interface User {
     recruiterProfile?: RecruiterProfile;
     details?: UserDetails | RecruiterProfile;
     appliedJobsCount?: number;
+    followers?: string[] | any[];
+    following?: string[] | any[];
 }
 
 export interface Job {
@@ -233,6 +235,26 @@ export const user = {
     deleteAccount: () => {
         return request<{ success: boolean }>('/users/profile', {
             method: 'DELETE',
+        });
+    },
+    follow: (id: string) => {
+        return request<{ success: boolean; message: string }>(`/users/follow/${id}`, {
+            method: 'POST',
+        });
+    },
+    unfollow: (id: string) => {
+        return request<{ success: boolean; message: string }>(`/users/unfollow/${id}`, {
+            method: 'POST',
+        });
+    },
+    getFollowers: (id: string) => {
+        return request<{ success: boolean; followers: any[] }>(`/users/${id}/followers`, {
+            method: 'GET',
+        });
+    },
+    getFollowing: (id: string) => {
+        return request<{ success: boolean; following: any[] }>(`/users/${id}/following`, {
+            method: 'GET',
         });
     }
 };

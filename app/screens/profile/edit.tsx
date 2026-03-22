@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '@/app/constants/Colors';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,16 +33,30 @@ export default function EditProfileScreen() {
     const [formData, setFormData] = useState({
         fullName: user?.profile?.fullName || user?.recruiterProfile?.companyName || '',
         headline: user?.profile?.headline || user?.recruiterProfile?.industry || '',
-        bio: user?.profile?.bio || user?.recruiterProfile?.location || '',
+        bio: user?.profile?.bio || user?.recruiterProfile?.about || '',
         phone: user?.profile?.phone || '',
         location: user?.profile?.location || user?.recruiterProfile?.location || '',
+        // Recruiter specific
+        companySize: user?.recruiterProfile?.companySize || '',
+        companyWebsite: user?.recruiterProfile?.companyWebsite || '',
+        // Seeker specific
+        skills: user?.profile?.skills || [],
     });
 
     const handleSave = async () => {
         setLoading(true);
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            const res = await userApi.updateProfile(formData);
+            
+            // Map generic formData to role-specific fields expected by backend
+            const updateData: any = { ...formData };
+            if (user?.role === 'recruiter') {
+                updateData.companyName = formData.fullName;
+                updateData.industry = formData.headline;
+                updateData.about = formData.bio;
+            }
+
+            const res = await userApi.updateProfile(updateData);
             if (res.success) {
                 setUser(res.user);
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully!' });
@@ -49,6 +64,42 @@ export default function EditProfileScreen() {
             }
         } catch (error: any) {
             Toast.show({ type: 'error', text1: 'Update Failed', text2: error.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateImage = async (type: 'avatar' | 'coverImage') => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: type === 'avatar' ? [1, 1] : [16, 9],
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                setLoading(true);
+                const imageUri = result.assets[0].uri;
+                const fileName = imageUri.split('/').pop();
+                const fileType = fileName?.split('.').pop();
+
+                const formDataUpload = new FormData();
+                formDataUpload.append('file', {
+                    uri: imageUri,
+                    name: fileName,
+                    type: `image/${fileType}`,
+                } as any);
+                formDataUpload.append('type', type);
+
+                const res = await userApi.uploadImage(formDataUpload);
+                if (res.success) {
+                    setUser(res.user);
+                    Toast.show({ type: 'success', text1: 'Success', text2: 'Image updated!' });
+                }
+            }
+        } catch (error: any) {
+            Toast.show({ type: 'error', text1: 'Upload Failed', text2: error.message });
         } finally {
             setLoading(false);
         }
@@ -78,6 +129,17 @@ export default function EditProfileScreen() {
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    {/* Image Section */}
+                    <View style={styles.imageSection}>
+                        <TouchableOpacity style={styles.coverUpload} onPress={() => handleUpdateImage('coverImage')}>
+                            <Ionicons name="camera" size={24} color={theme.text} />
+                            <Text style={{ color: theme.text, fontFamily: 'Outfit-Medium', marginTop: 5 }}>Update Cover</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.avatarUpload} onPress={() => handleUpdateImage('avatar')}>
+                            <Ionicons name="camera" size={20} color="white" />
+                        </TouchableOpacity>
+                    </View>
+
                     <View style={styles.section}>
                         <Text style={[styles.label, { color: theme.text }]}>Name / Company Name</Text>
                         <TextInput
@@ -135,6 +197,32 @@ export default function EditProfileScreen() {
                             keyboardType="phone-pad"
                         />
                     </View>
+
+                    {user?.role === 'recruiter' && (
+                        <>
+                            <View style={styles.section}>
+                                <Text style={[styles.label, { color: theme.text }]}>Company Website</Text>
+                                <TextInput
+                                    style={[styles.input, inputStyle]}
+                                    placeholder="https://example.com"
+                                    placeholderTextColor="#71717a"
+                                    value={formData.companyWebsite}
+                                    onChangeText={(t) => setFormData({ ...formData, companyWebsite: t })}
+                                    autoCapitalize="none"
+                                />
+                            </View>
+                            <View style={styles.section}>
+                                <Text style={[styles.label, { color: theme.text }]}>Company Size</Text>
+                                <TextInput
+                                    style={[styles.input, inputStyle]}
+                                    placeholder="e.g. 50-100 employees"
+                                    placeholderTextColor="#71717a"
+                                    value={formData.companySize}
+                                    onChangeText={(t) => setFormData({ ...formData, companySize: t })}
+                                />
+                            </View>
+                        </>
+                    )}
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -182,5 +270,35 @@ const styles = StyleSheet.create({
         padding: wp('4%'),
         fontSize: wp('4%'),
         fontFamily: 'Outfit-Medium',
+    },
+    imageSection: {
+        height: hp('18%'),
+        marginBottom: hp('5%'),
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    coverUpload: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: wp('4%'),
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.1)',
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    avatarUpload: {
+        position: 'absolute',
+        bottom: -20,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#10b981',
+        borderWidth: 4,
+        borderColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10
     }
 });

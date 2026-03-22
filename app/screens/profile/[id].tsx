@@ -20,6 +20,8 @@ import {
     widthPercentageToDP as wp
 } from 'react-native-responsive-screen';
 import { StatusBar } from 'expo-status-bar';
+import * as ImagePicker from 'expo-image-picker';
+import Toast from 'react-native-toast-message';
 
 // API & Components
 import { user as userApi, posts as postsApi, reels as reelsApi, jobs as jobsApi, User, Post, Reel, Job, FeedItemData } from '@/app/data/api';
@@ -47,6 +49,10 @@ export default function ProfileDetailsScreen() {
     const [error, setError] = useState('');
     const [viewerVisible, setViewerVisible] = useState(false);
     const [viewerImage, setViewerImage] = useState('');
+    const [isUpdatingImage, setIsUpdatingImage] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followerCount, setFollowerCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
 
     const transformPostData = (items: any[]): FeedItemData[] => {
         return items.map(item => ({
@@ -77,6 +83,9 @@ export default function ProfileDetailsScreen() {
 
             if (res.success) {
                 setProfileData(res.user);
+                setIsFollowing(!!res.user.followers?.includes(currentUser?._id));
+                setFollowerCount(res.user.followers?.length || 0);
+                setFollowingCount(res.user.following?.length || 0);
 
                 // Fetch associated content
                 const [postsRes, reelsRes] = await Promise.all([
@@ -111,6 +120,65 @@ export default function ProfileDetailsScreen() {
     const onRefresh = useCallback(() => {
         fetchUser(true);
     }, [id]);
+
+    const handleUpdateImage = async (type: 'avatar' | 'coverImage') => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: type === 'avatar' ? [1, 1] : [16, 9],
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                setIsUpdatingImage(true);
+                const formData = new FormData();
+                const imageUri = result.assets[0].uri;
+                const fileName = imageUri.split('/').pop();
+                const fileType = fileName?.split('.').pop();
+
+                formData.append('file', {
+                    uri: imageUri,
+                    name: fileName,
+                    type: `image/${fileType}`,
+                } as any);
+                formData.append('type', type);
+
+                const res = await userApi.uploadImage(formData);
+                if (res.success) {
+                    setProfileData(prev => prev ? { ...prev, [type]: res.imageUrl } : null);
+                    useUserStore.getState().setUser(res.user);
+                    Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated!' });
+                }
+            }
+        } catch (error: any) {
+            Toast.show({ type: 'error', text1: 'Upload Failed', text2: error.message });
+        } finally {
+            setIsUpdatingImage(false);
+        }
+    };
+
+    const handleFollowToggle = async () => {
+        if (!profileData) return;
+        try {
+            const wasFollowing = isFollowing;
+            setIsFollowing(!wasFollowing);
+            setFollowerCount(prev => wasFollowing ? prev - 1 : prev + 1);
+
+            const res = wasFollowing 
+                ? await userApi.unfollow(profileData?._id)
+                : await userApi.follow(profileData?._id);
+
+            if (!res.success) {
+                // Rollback on failure
+                setIsFollowing(wasFollowing);
+                setFollowerCount(prev => wasFollowing ? prev + 1 : prev - 1);
+                Toast.show({ type: 'error', text1: 'Error', text2: res.message });
+            }
+        } catch (error: any) {
+            Toast.show({ type: 'error', text1: 'Error', text2: error.message });
+        }
+    };
 
     if (loading || refreshing) {
         return <RecruiterProfileSkeleton />;
@@ -179,6 +247,14 @@ export default function ProfileDetailsScreen() {
                             className="w-full"
                             style={{ height: hp('22%'), backgroundColor: '#27272a' }}
                         />
+                        {isMe && (
+                            <TouchableOpacity 
+                                onPress={() => handleUpdateImage('coverImage')}
+                                className="absolute right-4 bottom-4 w-10 h-10 rounded-full bg-black/50 items-center justify-center"
+                            >
+                                <Ionicons name="camera" size={20} color="white" />
+                            </TouchableOpacity>
+                        )}
                     </TouchableOpacity>
                     <View className="flex-row justify-between items-end px-4 -mt-12">
                         <TouchableOpacity 
@@ -192,14 +268,28 @@ export default function ProfileDetailsScreen() {
                                 className="rounded-2xl bg-zinc-800"
                                 style={{ width: wp('24%'), height: wp('24%') }}
                             />
+                            {isMe && (
+                                <View className="absolute inset-0 items-center justify-center bg-black/30 rounded-2xl">
+                                    <TouchableOpacity onPress={() => handleUpdateImage('avatar')}>
+                                        <Ionicons name="camera" size={24} color="white" />
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </TouchableOpacity>
                         <TouchableOpacity
                             className="px-6 py-2 rounded-full mb-1"
-                            style={{ backgroundColor: isMe ? theme.brand : theme.text }}
-                            onPress={() => isMe ? router.push('/screens/profile/edit') : null}
+                            style={{ 
+                                backgroundColor: isMe ? theme.brand : (isFollowing ? 'transparent' : theme.text),
+                                borderWidth: !isMe && isFollowing ? 1 : 0,
+                                borderColor: theme.text
+                            }}
+                            onPress={() => isMe ? router.push('/screens/profile/edit') : handleFollowToggle()}
                         >
-                            <Text style={{ color: isMe ? '#000' : theme.background, fontFamily: 'Outfit-Bold' }}>
-                                {isMe ? 'Edit Profile' : 'Follow'}
+                            <Text style={{ 
+                                color: isMe ? '#000' : (isFollowing ? theme.text : theme.background), 
+                                fontFamily: 'Outfit-Bold' 
+                            }}>
+                                {isMe ? 'Edit Profile' : (isFollowing ? 'Unfollow' : 'Follow')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -232,10 +322,15 @@ export default function ProfileDetailsScreen() {
                             </View>
                         </View>
 
-                        <View className="flex-row mt-4 mb-4 gap-x-4">
-                            <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>0 <Text className="text-zinc-500 font-normal">Following</Text></Text>
-                            <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{profileData.appliedJobsCount || 0} <Text className="text-zinc-500 font-normal">Applications</Text></Text>
-                        </View>
+                    <View className="flex-row mt-4 mb-4 gap-x-4">
+                        <TouchableOpacity onPress={() => router.push(`/screens/profile/follow?id=${profileData._id}&type=following`)}>
+                            <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{followingCount} <Text className="text-zinc-500 font-normal">Following</Text></Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => router.push(`/screens/profile/follow?id=${profileData._id}&type=followers`)}>
+                            <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{followerCount} <Text className="text-zinc-500 font-normal">Followers</Text></Text>
+                        </TouchableOpacity>
+                        <Text style={{ color: theme.text, fontFamily: 'Outfit-Bold' }}>{profileData.appliedJobsCount || 0} <Text className="text-zinc-500 font-normal">Applications</Text></Text>
+                    </View>
                     </View>
                 </View>
 

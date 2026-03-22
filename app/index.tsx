@@ -59,14 +59,15 @@ export default function Index() {
         console.log('[Splash] User:', user ? 'Exists' : 'Null');
 
         if (token) {
-          // If token exists, we consider them logged in.
-          // We check the user object for profile completion if it exists locally,
-          // otherwise we default to home to unblock the user.
-          const isProfileComplete = user?.isProfileCompleted || (user?.fullName && user?.headline);
+          // Robust redirection: check role first, then completion
+          if (!user) {
+            router.replace('/screens/auth/login');
+            return;
+          }
 
-          if (user && !isProfileComplete) {
+          if (user.isProfileCompleted === false) {
             router.replace('/screens/complete-profile');
-          } else if (user?.role === 'recruiter' || user?.role === 'employer') {
+          } else if (user.role === 'recruiter') {
             router.replace('/screens/(recruiters)');
           } else {
             router.replace('/screens/(home)');
