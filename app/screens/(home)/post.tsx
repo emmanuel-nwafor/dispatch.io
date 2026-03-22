@@ -80,80 +80,29 @@ export default function PostScreen() {
         setLoading(true);
         setUploadProgress(0);
         try {
-            const hasVideo = selectedMedia.some(m => m.type === 'video');
+            // Updated unified post creation (supporting both images and video)
+            const formData = new FormData();
+            formData.append('content', postContent);
 
-            if (hasVideo) {
-                // Handle as Reel via Mux Direct Upload
-                const videoAsset = selectedMedia.find(m => m.type === 'video');
-                if (!videoAsset) throw new Error("Video asset not found");
+            selectedMedia.forEach((asset, index) => {
+                const filename = asset.uri.split('/').pop() || (asset.type === 'video' ? `video_${index}.mp4` : `image_${index}.jpg`);
+                const match = /\.(\w+)$/.exec(filename);
+                const fileType = asset.type === 'video' 
+                    ? (match ? `video/${match[1]}` : 'video/mp4')
+                    : (match ? `image/${match[1]}` : 'image/jpeg');
 
-                // 1. Get Upload URL
-                const { data: { uploadUrl, uploadId } } = await reelsApi.getUploadUrl();
+                formData.append(asset.type === 'video' ? 'video' : 'images', {
+                    uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+                    name: filename,
+                    type: fileType,
+                } as any);
+            });
 
-                // 2. Direct Binary Upload to Mux via XHR (for progress)
-                const response = await fetch(videoAsset.uri);
-                const blob = await response.blob();
-
-                await new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('PUT', uploadUrl);
-                    xhr.setRequestHeader('Content-Type', videoAsset.type || 'video/mp4');
-
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable) {
-                            const progress = Math.round((event.loaded / event.total) * 100);
-                            setUploadProgress(progress);
-                        }
-                    };
-
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve(xhr.response);
-                        } else {
-                            reject(new Error(`Upload failed with status ${xhr.status}`));
-                        }
-                    };
-
-                    xhr.onerror = () => reject(new Error("Mux upload failed"));
-                    xhr.send(blob);
-                });
-
-                // 3. Create Reel Record in our Backend
-                const res = await reelsApi.create({
-                    title: postContent.slice(0, 50) || 'New Reel',
-                    description: postContent,
-                    type: 'seeker_pitch',
-                    muxUploadId: uploadId,
-                });
-
-                if (res.success) {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    Alert.alert("Success", "Reel uploaded and processing!");
-                    router.back();
-                }
-            } else {
-                // Handle as Post (Images/Text) via Cloudinary
-                const formData = new FormData();
-                formData.append('content', postContent);
-
-                selectedMedia.forEach((asset, index) => {
-                    const filename = asset.uri.split('/').pop() || `image_${index}.jpg`;
-                    const match = /\.(\w+)$/.exec(filename);
-                    const fileType = match ? `image/${match[1]}` : `image/jpeg`;
-
-                    formData.append('images', {
-                        uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
-                        name: filename,
-                        type: fileType,
-                    } as any);
-                });
-
-                const res = await postsApi.create(formData);
-                if (res.success) {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    Alert.alert("Success", "Post shared successfully!");
-                    router.back();
-                }
+            const res = await postsApi.create(formData);
+            if (res.success) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("Success", "Post shared successfully!");
+                router.back();
             }
         } catch (error: any) {
             console.error("Posting Error:", error);

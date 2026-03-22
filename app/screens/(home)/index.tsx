@@ -74,7 +74,10 @@ export default function UsersHomeScreen() {
                             reposts: '5',
                             likes: isJob ? String(item.applicantsCount || 0) : String(item.likes?.length || 0)
                         },
-                        attachments: item.images ? item.images.map((img: string) => ({ type: 'image', url: img })) : []
+                        attachments: [
+                            ...(item.images ? item.images.map((img: string) => ({ type: 'image', url: img })) : []),
+                            ...(item.videoUrl ? [{ type: 'video', url: item.videoUrl, thumbnail: item.thumbnailUrl || item.videoUrl.replace(/\.[^.]+$/, '.jpg') }] : [])
+                        ]
                     };
                 });
                 setFeedData(transformedData);

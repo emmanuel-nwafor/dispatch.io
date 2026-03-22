@@ -23,7 +23,7 @@ import {
 import { user as userApi, User } from '@/app/data/api';
 import { storage } from '@/app/utils/storage';
 import Toast from 'react-native-toast-message';
-import { BlurView } from 'expo-blur';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface MenuItemProps {
     icon: string;
@@ -76,7 +76,7 @@ export default function SeekersProfileScreen() {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [uploading, setUploading] = useState<{ avatar: boolean; cover: boolean }>({ avatar: false, cover: false });
+    const [uploading, setUploading] = useState(false);
 
     const fetchProfile = async (isRefreshing = false) => {
         if (!isRefreshing) setLoading(true);
@@ -103,7 +103,7 @@ export default function SeekersProfileScreen() {
         fetchProfile();
     }, []);
 
-    const pickImage = async (type: 'avatar' | 'cover') => {
+    const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
             Toast.show({ type: 'info', text1: 'Permission Denied', text2: 'We need access to your photos' });
@@ -113,20 +113,20 @@ export default function SeekersProfileScreen() {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: type === 'avatar' ? [1, 1] : [16, 9],
+            aspect: [1, 1],
             quality: 0.7,
         });
 
         if (!result.canceled) {
-            uploadImage(result.assets[0].uri, type);
+            uploadAvatar(result.assets[0].uri);
         }
     };
 
-    const uploadImage = async (uri: string, type: 'avatar' | 'cover') => {
-        setUploading(prev => ({ ...prev, [type]: true }));
+    const uploadAvatar = async (uri: string) => {
+        setUploading(true);
         try {
             const formData = new FormData();
-            const filename = uri.split('/').pop() || 'upload.jpg';
+            const filename = uri.split('/').pop() || 'avatar.jpg';
             const match = /\.(\w+)$/.exec(filename);
             const mimeType = match ? `image/${match[1]}` : `image/jpeg`;
 
@@ -136,27 +136,19 @@ export default function SeekersProfileScreen() {
                 type: mimeType,
             } as any);
 
-            formData.append('type', type === 'avatar' ? 'avatar' : 'coverImage');
+            formData.append('type', 'avatar');
 
             const res = await userApi.uploadImage(formData);
 
             if (res.success) {
-                const updatedUser = { ...user } as User;
-                if (type === 'avatar') updatedUser.avatar = res.imageUrl;
-                else updatedUser.coverImage = res.imageUrl;
-
+                const updatedUser = { ...user, avatar: res.imageUrl } as User;
                 setUser(updatedUser);
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Image updated successfully!' });
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Avatar updated!' });
             }
         } catch (error: any) {
-            console.error("Upload Error:", error);
-            Toast.show({
-                type: 'error',
-                text1: 'Upload Failed',
-                text2: error.message || 'Server error (500)'
-            });
+            Toast.show({ type: 'error', text1: 'Upload Failed', text2: error.message || 'Server error' });
         } finally {
-            setUploading(prev => ({ ...prev, [type]: false }));
+            setUploading(false);
         }
     };
 
@@ -167,7 +159,6 @@ export default function SeekersProfileScreen() {
 
     const fullName = user?.profile?.fullName || 'Anonymous';
     const avatar = user?.avatar || `https://ui-avatars.com/api/?name=${fullName.replace(' ', '+')}&background=006400&color=fff`;
-    const coverImage = user?.coverImage || 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1000';
 
     if (loading) {
         return (
@@ -178,101 +169,100 @@ export default function SeekersProfileScreen() {
     }
 
     return (
-        <View className="flex-1" style={{ backgroundColor: theme.background }}>
-            <StatusBar style="light" />
+        <SafeAreaView className="flex-1" style={{ backgroundColor: theme.background }} edges={['top']}>
+            <StatusBar style={isDark ? "light" : "dark"} />
 
-            {/* FLOATING HEADER */}
-            <View style={styles.headerContainer} className="flex-row justify-between items-end px-6 pb-4">
-                <Text style={styles.headerTitle} className="text-white">Profile</Text>
+            {/* HEADER */}
+            <View className="flex-row justify-between items-center px-6 py-4">
+                <Text style={styles.headerTitle} className={isDark ? "text-white" : "text-zinc-900"}>Profile</Text>
                 <TouchableOpacity
                     onPress={() => router.push({ pathname: '/screens/profile/[id]', params: { id: user?._id } } as any)}
-                    className="overflow-hidden rounded-full"
+                    style={{ backgroundColor: isDark ? '#27272a' : '#f4f4f5' }}
+                    className="flex-row items-center px-4 py-2 rounded-full border border-zinc-200 dark:border-zinc-800"
                 >
-                    <BlurView intensity={30} tint="light" className="flex-row items-center px-4 py-2 border border-white/20">
-                        <Ionicons name="eye-outline" size={16} color="white" />
-                        <Text className="text-white ml-2 text-xs font-bold" style={{ fontFamily: 'Outfit-Bold' }}>Preview</Text>
-                    </BlurView>
+                    <Ionicons name="eye-outline" size={16} color={isDark ? '#fff' : '#000'} />
+                    <Text
+                        className="ml-2 text-xs font-bold"
+                        style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#fff' : '#000' }}
+                    >
+                        Preview
+                    </Text>
                 </TouchableOpacity>
             </View>
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: hp('15%') }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+                contentContainerStyle={{ paddingBottom: hp('5%') }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#006400" />}
             >
-                {/* HERO SECTION */}
-                <View style={styles.heroContainer} className="bg-black relative">
-                    <Image source={{ uri: coverImage }} className="absolute inset-0 w-full h-full opacity-90" resizeMode="cover" />
-                    <View className="absolute inset-0 bg-black/30" />
-
-                    <TouchableOpacity onPress={() => pickImage('cover')} className="absolute" style={{ top: hp('16%'), right: 20 }}>
-                        <BlurView intensity={50} tint="dark" className="w-10 h-10 rounded-full items-center justify-center overflow-hidden">
-                            {uploading.cover ? (
-                                <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                                <Ionicons name="camera" size={20} color="white" />
+                {/* PROFILE IDENTITY SECTION */}
+                <View className="items-center mt-6 mb-8">
+                    <View className="relative">
+                        <View
+                            style={[styles.avatarBorder, { borderColor: isDark ? '#27272a' : '#fff' }]}
+                            className="w-32 h-32 rounded-full border-4 overflow-hidden shadow-2xl bg-zinc-200 dark:bg-zinc-800"
+                        >
+                            <Image source={{ uri: avatar }} className="w-full h-full" />
+                            {uploading && (
+                                <View className="absolute inset-0 bg-black/40 items-center justify-center">
+                                    <ActivityIndicator color="#fff" size="small" />
+                                </View>
                             )}
-                        </BlurView>
-                    </TouchableOpacity>
-
-                    {/* IDENTITY */}
-                    <View className="flex-1 justify-center items-center mt-16">
-                        <View className="relative">
-                            <View
-                                style={[styles.avatarBorder, { borderColor: theme.background }]}
-                                className="w-32 h-32 rounded-full border-4 overflow-hidden shadow-2xl bg-zinc-800"
-                            >
-                                <Image source={{ uri: avatar }} className="w-full h-full" />
-                                {uploading.avatar && (
-                                    <View className="absolute inset-0 bg-black/40 items-center justify-center">
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    </View>
-                                )}
-                            </View>
-                            <TouchableOpacity
-                                onPress={() => pickImage('avatar')}
-                                className="absolute bottom-1 right-1 w-8 h-8 rounded-full items-center justify-center border-2 border-white"
-                                style={{ backgroundColor: theme.brand }}
-                            >
-                                <Ionicons name="pencil" size={14} color="white" />
-                            </TouchableOpacity>
                         </View>
+                        <TouchableOpacity
+                            onPress={pickImage}
+                            className="absolute bottom-1 right-1 w-9 h-9 rounded-full items-center justify-center border-2 border-white"
+                            style={{ backgroundColor: '#006400' }}
+                        >
+                            <Ionicons name="camera" size={16} color="white" />
+                        </TouchableOpacity>
+                    </View>
 
-                        <Text className="text-white text-3xl mt-4" style={{ fontFamily: 'Outfit-Bold' }}>{fullName}</Text>
-                        <Text className="text-white/70 text-sm mt-1" style={{ fontFamily: 'Outfit-Medium' }}>
-                            {user?.role === 'seeker' ? 'Candidate' : 'Recruiter'}
-                            {user?.profile?.location && `  •  ${user.profile.location}`}
-                        </Text>
+                    <Text className="text-2xl mt-4" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{fullName}</Text>
+                    <View className="flex-row items-center mt-1">
+                        <View className="px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                            <Text className="text-zinc-500 text-xs uppercase font-bold" style={{ fontFamily: 'Outfit-Bold' }}>
+                                {user?.role === 'seeker' ? 'Candidate' : 'Recruiter'}
+                            </Text>
+                        </View>
+                        {user?.profile?.location && (
+                            <Text className="text-zinc-400 text-sm ml-2" style={{ fontFamily: 'Outfit-Medium' }}>
+                                • {user.profile.location}
+                            </Text>
+                        )}
                     </View>
                 </View>
 
-                {/* STATS BRIDGE */}
-                <View className="flex-row justify-between px-6 -mt-10">
+                {/* STATS SECTION */}
+                <View className="flex-row justify-between px-6 mb-10">
                     {[
-                        { label: 'Applied', value: user?.appliedJobsCount || 0, icon: 'send', color: '#006400' },
-                        { label: 'Match', value: (user?.profile?.autoApply?.minMatchScore || 0) + '%', icon: 'flash', color: '#006400' },
+                        { label: 'Applied', value: user?.appliedJobsCount || 0, icon: 'send' },
+                        { label: 'Match Rate', value: (user?.profile?.autoApply?.minMatchScore || 0) + '%', icon: 'flash' },
+                        { label: 'Saved', value: '12', icon: 'bookmark' },
                     ].map((item, i) => (
                         <View
                             key={i}
-                            className="items-center py-5 rounded-3xl shadow-lg border"
+                            className="items-center py-4 rounded-[25px] shadow-sm border"
                             style={{
-                                width: wp('27%'),
+                                width: wp('28%'),
                                 backgroundColor: isDark ? '#1a1a1a' : '#fff',
                                 borderColor: isDark ? '#222' : '#f0f0f0'
                             }}
                         >
-                            <Ionicons name={item.icon as any} size={20} color={item.color} />
-                            <Text className="text-lg mt-2" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{item.value}</Text>
+                            <View className="w-8 h-8 rounded-full items-center justify-center mb-2 bg-green-50 dark:bg-green-900/20">
+                                <Ionicons name={item.icon as any} size={16} color="#006400" />
+                            </View>
+                            <Text className="text-lg" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{item.value}</Text>
                             <Text className="text-zinc-400 text-[10px] uppercase tracking-wider font-medium">{item.label}</Text>
                         </View>
                     ))}
                 </View>
 
                 {/* MENU CONTENT */}
-                <View className="px-6 mt-10">
+                <View className="px-6">
                     <SectionLabel title="Account Management" />
                     <View
-                        className="rounded-[35px] border overflow-hidden mb-8"
+                        className="rounded-[30px] border overflow-hidden mb-8"
                         style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
                     >
                         <MenuItem icon="person-outline" label="Personal Details" />
@@ -282,7 +272,7 @@ export default function SeekersProfileScreen() {
 
                     <SectionLabel title="Support" />
                     <View
-                        className="rounded-[35px] border overflow-hidden"
+                        className="rounded-[30px] border overflow-hidden"
                         style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
                     >
                         <MenuItem icon="help-circle-outline" label="Help Center" />
@@ -290,7 +280,7 @@ export default function SeekersProfileScreen() {
                     </View>
                 </View>
             </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -301,32 +291,15 @@ const SectionLabel = ({ title }: { title: string }) => (
 );
 
 const styles = StyleSheet.create({
-    headerContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: hp('14%'),
-        zIndex: 100,
-    },
     headerTitle: {
         fontFamily: 'Outfit-Bold',
-        fontSize: wp('7%'),
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
-    },
-    heroContainer: {
-        height: hp('46%'),
-        borderBottomLeftRadius: 45,
-        borderBottomRightRadius: 45,
-        overflow: 'hidden',
+        fontSize: wp('6.5%'),
     },
     avatarBorder: {
-        elevation: 15,
+        elevation: 10,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
     }
 });

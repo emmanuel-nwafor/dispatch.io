@@ -32,9 +32,10 @@ interface FeedItemProps {
     };
     onPress?: () => void;
     onApply?: () => void;
+    onVideoPress?: () => void;
 }
 
-const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
+const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply, onVideoPress }) => {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -86,7 +87,12 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
         if (attachments.length === 1) {
             const attachment = attachments[0];
             return (
-                <View className="mb-3 rounded-2xl overflow-hidden border" style={{ borderColor: isDark ? '#2f3336' : '#eff3f4' }}>
+                <TouchableOpacity 
+                    activeOpacity={0.9}
+                    onPress={attachment.type === 'video' ? onVideoPress : undefined}
+                    className="mb-3 rounded-2xl overflow-hidden border" 
+                    style={{ borderColor: isDark ? '#2f3336' : '#eff3f4' }}
+                >
                     <Image
                         source={{ uri: attachment.type === 'video' ? attachment.thumbnail : attachment.url }}
                         style={{ width: '100%', height: 200 }}
@@ -99,15 +105,17 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
                             </View>
                         </View>
                     )}
-                </View>
+                </TouchableOpacity>
             );
         }
 
         return (
             <View className="flex-row flex-wrap mb-3 rounded-2xl overflow-hidden border" style={{ borderColor: isDark ? '#2f3336' : '#eff3f4' }}>
                 {attachments.map((att, index) => (
-                    <View
+                    <TouchableOpacity
                         key={index}
+                        activeOpacity={0.9}
+                        onPress={att.type === 'video' ? onVideoPress : undefined}
                         style={{
                             width: attachments.length === 2 ? '50%' : (attachments.length >= 3 && index < 2 ? '50%' : '100%'),
                             height: attachments.length === 2 ? 200 : (attachments.length >= 3 && index < 2 ? 150 : 150),
@@ -115,8 +123,15 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply }) => {
                             borderColor: isDark ? '#2f3336' : '#eff3f4'
                         }}
                     >
-                        <Image source={{ uri: att.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                    </View>
+                        <Image source={{ uri: att.type === 'video' ? att.thumbnail : att.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        {att.type === 'video' && (
+                            <View style={StyleSheet.absoluteFill} className="items-center justify-center bg-black/20">
+                                <View className="w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20">
+                                    <Ionicons name="play" size={20} color="white" style={{ marginLeft: 3 }} />
+                                </View>
+                            </View>
+                        )}
+                    </TouchableOpacity>
                 ))}
             </View>
         );

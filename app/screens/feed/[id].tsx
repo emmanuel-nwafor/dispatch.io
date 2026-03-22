@@ -39,12 +39,15 @@ export default function SingleFeedScreen() {
                         reposts: '0',
                         likes: (data.likes?.length || 0).toString(),
                     },
-                    attachments: data.images?.map((url: string) => ({ type: 'image', url })) || [],
+                    attachments: [
+                        ...(data.images ? data.images.map((url: string) => ({ type: 'image', url })) : []),
+                        ...(data.videoUrl ? [{ type: 'video', url: data.videoUrl, thumbnail: data.thumbnailUrl || data.videoUrl.replace(/\.[^.]+$/, '.jpg') }] : [])
+                    ],
                 };
 
                 if (data.feedType === 'reel') {
                     // If it's a reel, redirect to the vertical swiper for a better experience
-                    router.replace({ pathname: "/screens/reels/[id]", params: { id: data._id } } as any);
+                    router.replace({ pathname: "/screens/reels/[id]", params: { id: data._id } });
                     return;
                 }
 
@@ -71,7 +74,10 @@ export default function SingleFeedScreen() {
                     <ActivityIndicator color={theme.brand} />
                 </View>
             ) : item ? (
-                <FeedItem item={item} />
+                <FeedItem 
+                    item={item} 
+                    onVideoPress={() => router.push({ pathname: "/screens/reels/[id]", params: { id: item.id } })}
+                />
             ) : (
                 <View className="flex-1 justify-center items-center">
                     <Text style={{ color: theme.text }}>Post not found.</Text>
