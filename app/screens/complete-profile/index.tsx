@@ -32,6 +32,11 @@ import VisualsStep from './steps/VisualsStep';
 import DocumentsStep from './steps/DocumentsStep';
 import PersonalStep from './steps/PersonalStep';
 
+// Recruiter Steps
+import CompanyIdentityStep from './recruiter-steps/CompanyIdentityStep';
+import CompanyDetailStep from './recruiter-steps/CompanyDetailStep';
+import CompanyAboutStep from './recruiter-steps/CompanyAboutStep';
+
 // Components
 import CompleteProfileHeader from '@/components/profile/CompleteProfileHeader';
 import LocationPopup from '@/components/popups/LocationPopup';
@@ -70,7 +75,8 @@ export default function UsersCompleteProfileScreen() {
         languages: []
     });
 
-    const totalSteps = 8;
+    const isRecruiterMode = storeRole === 'employer';
+    const totalSteps = isRecruiterMode ? 4 : 8;
 
     useEffect(() => {
         const loadDraft = async () => {
@@ -197,6 +203,15 @@ export default function UsersCompleteProfileScreen() {
                         transition={{ type: 'timing', duration: 200 }}
                     >
                         {(() => {
+                            if (isRecruiterMode) {
+                                switch (step) {
+                                    case 1: return <CompanyIdentityStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
+                                    case 2: return <CompanyDetailStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} onOpenLocation={() => setLocationModalVisible(true)} />;
+                                    case 3: return <VisualsStep formData={formData} setFormData={setFormData} theme={theme} isDark={isDark} />;
+                                    case 4: return <CompanyAboutStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
+                                    default: return null;
+                                }
+                            }
                             switch (step) {
                                 case 1: return <IdentityStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} />;
                                 case 2: return <AboutStep formData={formData} setFormData={setFormData} theme={theme} inputStyle={inputStyle} onOpenLocation={() => setLocationModalVisible(true)} />;

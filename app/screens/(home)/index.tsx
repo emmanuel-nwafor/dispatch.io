@@ -26,6 +26,7 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import { feeds as feedsApi } from '@/app/data/api';
 import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
+import { useUserStore } from '@/hooks/useUserStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -35,6 +36,7 @@ export default function UsersHomeScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const { user: currentUser } = useUserStore();
     const isDark = colorScheme === 'dark';
 
     const [filterVisible, setFilterVisible] = useState(false);
@@ -60,12 +62,15 @@ export default function UsersHomeScreen() {
 
                     return {
                         id: item._id,
+                        userId: isJob ? item.recruiter?._id : item.creatorId?._id,
                         type: item.feedType,
                         user: creatorName,
                         handle: `@${creatorName.replace(/\s+/g, '').toLowerCase()}`,
                         avatar: item.recruiter?.avatar || item.creatorId?.avatar || `https://ui-avatars.com/api/?name=${creatorName.replace(/\s+/g, '+')}`,
                         time: '2h',
                         content: isJob ? item.description : item.content,
+                        isLiked: item.likes?.includes(currentUser?._id),
+                        isReshared: item.reshares?.some((r: any) => (r.userId || r) === currentUser?._id),
                         jobRole: item.title,
                         salary: isJob ? `${item.salaryRange?.min}-${item.salaryRange?.max}` : undefined,
                         location: item.location || 'Remote',

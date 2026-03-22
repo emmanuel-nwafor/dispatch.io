@@ -7,6 +7,9 @@ import {
     TouchableOpacity,
     Platform,
     RefreshControl,
+    Modal,
+    Dimensions,
+    ActivityIndicator
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -19,26 +22,51 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 // API & Components
-import { user as userApi, posts as postsApi, reels as reelsApi, jobs as jobsApi, User, Post, Reel, Job } from '@/app/data/api';
+import { user as userApi, posts as postsApi, reels as reelsApi, jobs as jobsApi, User, Post, Reel, Job, FeedItemData } from '@/app/data/api';
 import RecruiterProfileSkeleton from '@/components/skeletons/RecruiterProfileSkeleton';
 import FeedItem from '@/components/home/FeedItem';
 import JobCard from '@/components/JobCard';
+import { useUserStore } from '@/hooks/useUserStore';
 
 export default function ProfileDetailsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const currentUser = useUserStore(state => state.user);
 
     const isDark = colorScheme === 'dark';
+    const isMe = currentUser?._id === id || currentUser?.username === id || id === 'me';
     const [activeTab, setActiveTab] = useState('About');
     const [profileData, setProfileData] = useState<User | null>(null);
-    const [userPosts, setUserPosts] = useState<Post[]>([]);
+    const [userPosts, setUserPosts] = useState<FeedItemData[]>([]);
     const [userReels, setUserReels] = useState<Reel[]>([]);
     const [userJobs, setUserJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState('');
+    const [viewerVisible, setViewerVisible] = useState(false);
+    const [viewerImage, setViewerImage] = useState('');
+
+    const transformPostData = (items: any[]): FeedItemData[] => {
+        return items.map(item => ({
+            id: item._id,
+            userId: item.creatorId?._id || item.creatorId,
+            type: item.videoUrl ? 'reel' : 'post',
+            user: item.creatorId?.profile?.fullName || item.creatorId?.recruiterProfile?.companyName || 'User',
+            handle: `@${(item.creatorId?.username || 'user')}`,
+            avatar: item.creatorId?.avatar || `https://ui-avatars.com/api/?name=${(item.creatorId?.profile?.fullName || 'User').replace(/\s+/g, '+')}`,
+            time: '2h',
+            content: item.content || item.description || '',
+            isLiked: item.likes?.includes(currentUser?._id),
+            stats: {
+                comments: String(item.comments?.length || 0),
+                reposts: String(item.resharesCount || 0),
+                likes: String(item.likes?.length || 0)
+            },
+            attachments: item.images?.map((img: string) => ({ type: 'image', url: img })) || []
+        }));
+    };
 
     const fetchUser = async (isRefreshing = false) => {
         try {
@@ -56,7 +84,7 @@ export default function ProfileDetailsScreen() {
                     reelsApi.getByUser(id as string)
                 ]);
 
-                if (postsRes.success) setUserPosts(postsRes.data);
+                if (postsRes.success) setUserPosts(transformPostData(postsRes.data));
                 if (reelsRes.success) setUserReels(reelsRes.data);
 
                 if (res.user.role === 'recruiter') {
@@ -106,7 +134,8 @@ export default function ProfileDetailsScreen() {
     }
 
     const isRecruiter = profileData.role === 'recruiter';
-    const profileImage = profileData.profile?.resumeUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const profileImage = profileData.avatar || `https://ui-avatars.com/api/?name=${(profileData.profile?.fullName || profileData.username || 'User').replace(/\s+/g, '+')}`;
+    const coverImage = profileData.coverImage || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1000';
 
     return (
         <View className="flex-1" style={{ backgroundColor: theme.background }}>
@@ -144,24 +173,34 @@ export default function ProfileDetailsScreen() {
             >
                 {/* Section 1: Profile Top */}
                 <View style={{ backgroundColor: theme.background }}>
-                    <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1000' }}
-                        className="w-full"
-                        style={{ height: hp('22%') }}
-                    />
+                    <TouchableOpacity activeOpacity={0.9} onPress={() => { setViewerImage(coverImage); setViewerVisible(true); }}>
+                        <Image
+                            source={{ uri: coverImage }}
+                            className="w-full"
+                            style={{ height: hp('22%'), backgroundColor: '#27272a' }}
+                        />
+                    </TouchableOpacity>
                     <View className="flex-row justify-between items-end px-4 -mt-12">
-                        <View className="p-1 rounded-3xl" style={{ backgroundColor: theme.background }}>
+                        <TouchableOpacity 
+                            activeOpacity={0.9} 
+                            onPress={() => { setViewerImage(profileImage); setViewerVisible(true); }}
+                            className="p-1 rounded-3xl" 
+                            style={{ backgroundColor: theme.background }}
+                        >
                             <Image
                                 source={{ uri: profileImage }}
                                 className="rounded-2xl bg-zinc-800"
                                 style={{ width: wp('24%'), height: wp('24%') }}
                             />
-                        </View>
+                        </TouchableOpacity>
                         <TouchableOpacity
                             className="px-6 py-2 rounded-full mb-1"
-                            style={{ backgroundColor: theme.text }}
+                            style={{ backgroundColor: isMe ? theme.brand : theme.text }}
+                            onPress={() => isMe ? router.push('/screens/profile/edit') : null}
                         >
-                            <Text style={{ color: theme.background, fontFamily: 'Outfit-Bold' }}>Follow</Text>
+                            <Text style={{ color: isMe ? '#000' : theme.background, fontFamily: 'Outfit-Bold' }}>
+                                {isMe ? 'Edit Profile' : 'Follow'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
@@ -255,7 +294,7 @@ export default function ProfileDetailsScreen() {
                         <View className="gap-y-4">
                             {userPosts.length > 0 ? (
                                 userPosts.map(post => (
-                                    <FeedItem key={post._id} item={{ ...post, type: 'post' } as any} />
+                                    <FeedItem key={post.id} item={{ ...post, type: 'post' } as any} />
                                 ))
                             ) : (
                                 <View className="items-center mt-10">
@@ -304,6 +343,30 @@ export default function ProfileDetailsScreen() {
                     )}
                 </View>
             </ScrollView>
+
+            {/* Image Viewer Modal */}
+            <Modal
+                visible={viewerVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setViewerVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{ position: 'absolute', top: hp('6%'), right: wp('5%'), zIndex: 100, padding: 10 }}
+                        onPress={() => setViewerVisible(false)}
+                    >
+                        <Ionicons name="close" size={32} color="white" />
+                    </TouchableOpacity>
+                    {viewerImage ? (
+                        <Image
+                            source={{ uri: viewerImage }}
+                            style={{ width: wp('100%'), height: hp('70%') }}
+                            resizeMode="contain"
+                        />
+                    ) : null}
+                </View>
+            </Modal>
         </View>
     );
 }

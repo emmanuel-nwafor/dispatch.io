@@ -125,6 +125,32 @@ export interface Reel {
     updatedAt: string;
 }
 
+export interface FeedItemData {
+    id: string | number;
+    userId?: string;
+    type: 'job' | 'post' | 'reel' | 'candidate';
+    user: string;
+    handle: string;
+    avatar: string;
+    time: string;
+    content: string;
+    isLiked?: boolean;
+    isReshared?: boolean;
+    jobRole?: string;
+    salary?: string;
+    location?: string;
+    stats: {
+        comments: string;
+        reposts: string;
+        likes: string;
+    };
+    attachments?: Array<{
+        type: 'image' | 'video';
+        url: string;
+        thumbnail?: string;
+    }>;
+}
+
 // Request Helper
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Animated, useColorScheme } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Animated, useColorScheme, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/app/constants/Colors';
 import * as Haptics from 'expo-haptics';
@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { posts } from '@/app/data/api';
+import Toast from 'react-native-toast-message';
 
 // --- Skeleton Component ---
 const Skeleton = ({ width, height, borderRadius = 8, style }: any) => {
@@ -47,14 +48,17 @@ const Skeleton = ({ width, height, borderRadius = 8, style }: any) => {
 };
 
 interface FeedItemProps {
-    item?: { // Made optional for loading state
+    item?: {
         id: number | string;
         type: 'job' | 'post' | 'reel' | 'candidate';
+        userId?: string; // ID for navigation
         user: string;
         handle: string;
         avatar: string;
         time: string;
         content: string;
+        isLiked?: boolean;
+        isReshared?: boolean;
         jobRole?: string;
         salary?: string;
         location?: string;
@@ -82,34 +86,33 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
     const isDark = colorScheme === 'dark';
 
     // State for local interaction
-    const [isLiked, setIsLiked] = useState(false);
-    const [likeCount, setLikeCount] = useState(item ? (parseInt(item.stats.likes.replace(/[^0-9.]/g, '')) || 0) : 0);
+    const [isLiked, setIsLiked] = useState(item?.isLiked || false);
+    const [likeCount, setLikeCount] = useState(() => {
+        if (!item) return 0;
+        const likes = item.stats?.likes || '0';
+        return (parseInt(likes.replace(/[^0-9.]/g, '')) || 0);
+    });
     const [shareVisible, setShareVisible] = useState(false);
+    const [isCommenting, setIsCommenting] = useState(false);
+    const [commentText, setCommentText] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     if (loading || !item) {
         return (
             <View style={[styles.tweetContainer, { borderBottomColor: isDark ? '#2f3336' : '#eff3f4' }]}>
                 <View className="flex-row px-4 py-4">
-                    {/* Left Column: Avatar Skeleton */}
                     <View className="mr-3">
                         <Skeleton width={wp('12%')} height={wp('12%')} borderRadius={wp('6%')} />
                     </View>
-
-                    {/* Right Column: Content Skeleton */}
                     <View className="flex-1">
                         <View className="flex-row items-center mb-2">
                             <Skeleton width={wp('30%')} height={15} borderRadius={4} style={{ marginRight: 8 }} />
                             <Skeleton width={wp('20%')} height={15} borderRadius={4} />
                         </View>
-
                         <Skeleton width="100%" height={14} borderRadius={4} style={{ marginBottom: 8 }} />
                         <Skeleton width="85%" height={14} borderRadius={4} style={{ marginBottom: 16 }} />
-
-                        {/* Image/Attachment Placeholder */}
                         <Skeleton width="100%" height={hp('25%')} borderRadius={16} style={{ marginBottom: 16 }} />
-
-                        {/* Interaction Bar Placeholder */}
                         <View className="flex-row justify-between pr-8">
                             {[1, 2, 3, 4].map((i) => (
                                 <Skeleton key={i} width={wp('8%')} height={12} borderRadius={4} />
@@ -121,7 +124,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
         );
     }
 
-    // --- Original Logic for Active Item ---
     const handleLike = async () => {
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -134,11 +136,9 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                 Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }),
             ]).start();
 
-            // Backend call
             await posts.like(item.id.toString());
         } catch (error) {
             console.error('Failed to like post:', error);
-            // Revert local state on error
             setIsLiked(prev => !prev);
             setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
         }
@@ -149,9 +149,10 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
             try {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 await posts.reshare(item.id.toString());
-                // Optional: update local repost count
+                Toast.show({ type: 'success', text1: 'Post reshared!' });
             } catch (error) {
                 console.error('Failed to reshare post:', error);
+                Toast.show({ type: 'error', text1: 'Failed to reshare' });
             }
         }
     };
@@ -159,6 +160,24 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
     const toggleShareModal = () => {
         Haptics.selectionAsync();
         setShareVisible(!shareVisible);
+    };
+
+    const handleCommentSubmit = async () => {
+        if (!commentText.trim()) return;
+        setIsSubmittingComment(true);
+        try {
+            const res = await posts.comment(item.id.toString(), commentText);
+            if (res.success) {
+                setCommentText('');
+                setIsCommenting(false);
+                Toast.show({ type: 'success', text1: 'Comment added' });
+            }
+        } catch (error) {
+            console.error('Failed to comment:', error);
+            Toast.show({ type: 'error', text1: 'Failed to add comment' });
+        } finally {
+            setIsSubmittingComment(false);
+        }
     };
 
     const handlePress = () => {
@@ -234,14 +253,12 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
             style={[styles.tweetContainer, { borderBottomColor: isDark ? '#2f3336' : '#eff3f4' }]}
         >
             <View className="flex-row px-4 py-4">
-                {/* Left Column: Avatar */}
-                <TouchableOpacity onPress={() => router.push(`/screens/profile/${item.user}` as any)}>
+                <TouchableOpacity onPress={() => router.push(`/screens/profile/${item.userId || item.user}` as any)}>
                     <View className="mr-3">
                         <Image source={{ uri: item.avatar }} className="w-12 h-12 rounded-full" />
                     </View>
                 </TouchableOpacity>
 
-                {/* Right Column: Content */}
                 <View className="flex-1">
                     <View className="flex-row items-center mb-1">
                         <Text numberOfLines={1} className="text-[15px] mr-1" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>
@@ -261,7 +278,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
 
                     {renderAttachments()}
 
-                    {/* ... Rest of your specific type rendering (job/reel) ... */}
                     {item.type === 'job' && (
                         <TouchableOpacity onPress={onApply} className="rounded-2xl border mb-3 overflow-hidden" style={{ borderColor: isDark ? '#2f3336' : '#cfd9de' }}>
                             <View className="p-3" style={{ backgroundColor: isDark ? '#1a1a1a' : '#f8fafc' }}>
@@ -276,14 +292,14 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
 
                     {/* Interaction Bar */}
                     <View className="flex-row justify-between pr-8 mt-1">
-                        <TouchableOpacity className="flex-row items-center">
-                            <Ionicons name="chatbubble-outline" size={18} color="#71717a" />
-                            <Text className="ml-2 text-xs text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>{item.stats.comments}</Text>
+                        <TouchableOpacity onPress={() => setIsCommenting(!isCommenting)} className="flex-row items-center">
+                            <Ionicons name="chatbubble-outline" size={18} color={isCommenting ? theme.brand : "#71717a"} />
+                            <Text className="ml-2 text-xs text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>{item.stats?.comments || '0'}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity className="flex-row items-center" onPress={toggleShareModal}>
                             <Ionicons name="repeat-outline" size={20} color="#71717a" />
-                            <Text className="ml-2 text-xs text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>{item.stats.reposts}</Text>
+                            <Text className="ml-2 text-xs text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>{item.stats?.reposts || '0'}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={handleLike} activeOpacity={0.7} className="flex-row items-center">
@@ -297,6 +313,32 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                             <Ionicons name="share-outline" size={18} color="#71717a" />
                         </TouchableOpacity>
                     </View>
+
+                    {/* Comment Input */}
+                    {isCommenting && (
+                        <View className="mt-4 flex-row items-center">
+                            <TextInput
+                                value={commentText}
+                                onChangeText={setCommentText}
+                                placeholder="Add a comment..."
+                                placeholderTextColor="#71717a"
+                                className="flex-1 p-2 rounded-xl bg-zinc-500/10"
+                                style={{ color: theme.text, fontFamily: 'Outfit-Regular' }}
+                                multiline
+                            />
+                            <TouchableOpacity 
+                                onPress={handleCommentSubmit} 
+                                disabled={isSubmittingComment || !commentText.trim()}
+                                className="ml-2 p-2"
+                            >
+                                {isSubmittingComment ? (
+                                    <ActivityIndicator size="small" color={theme.brand} />
+                                ) : (
+                                    <Ionicons name="send" size={20} color={commentText.trim() ? theme.brand : "#71717a"} />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </View>
 

@@ -162,9 +162,27 @@ export default function SeekersProfileScreen() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center" style={{ backgroundColor: theme.background }}>
-                <ActivityIndicator size="large" color="#006400" />
-            </View>
+            <SafeAreaView className="flex-1" style={{ backgroundColor: theme.background }} edges={['top']}>
+                <View className="flex-row justify-between items-center px-6 py-4">
+                    <Text style={styles.headerTitle} className={isDark ? "text-white" : "text-zinc-900"}>Profile</Text>
+                    <TouchableOpacity
+                        onPress={() => router.push({ pathname: '/screens/profile/[id]', params: { id: user?._id } } as any)}
+                        style={{ backgroundColor: isDark ? '#27272a' : '#f4f4f5' }}
+                        className="flex-row items-center px-4 py-2 rounded-full border border-zinc-200 dark:border-zinc-800"
+                    >
+                        <Ionicons name="eye-outline" size={16} color={isDark ? '#fff' : '#000'} />
+                        <Text
+                            className="ml-2 text-xs font-bold"
+                            style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#fff' : '#000' }}
+                        >
+                            Preview
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+                <View className="flex-1 justify-center items-center" style={{ backgroundColor: theme.background }}>
+                    <ActivityIndicator size="large" color="#006400" />
+                </View>
+            </SafeAreaView>
         );
     }
 

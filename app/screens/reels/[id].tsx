@@ -1,21 +1,44 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, Dimensions, ActivityIndicator, TouchableOpacity, useColorScheme } from 'react-native';
+import {
+    View,
+    Text,
+    FlatList,
+    Dimensions,
+    ActivityIndicator,
+    TouchableOpacity,
+    StyleSheet,
+    Image,
+    Platform,
+    StatusBar
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Video, ResizeMode, AVPlaybackStatus, Audio } from 'expo-av';
 import { feeds } from '@/app/data/api';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/app/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import * as Haptics from 'expo-haptics';
 
-const { height, width } = Dimensions.get('window');
+// Use 'screen' instead of 'window' to get the absolute height including nav bars
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('screen');
 
+// --- Sub-Component: ReelPlayer ---
 const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
     const videoRef = useRef<Video>(null);
     const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
+    const [isLiked, setIsLiked] = useState(false);
 
     useEffect(() => {
         const prepareAudio = async () => {
-             await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+            try {
+                await Audio.setAudioModeAsync({
+                    playsInSilentModeIOS: true,
+                    allowsRecordingIOS: false,
+                    staysActiveInBackground: false,
+                });
+            } catch (e) {
+                console.log("Audio mode error", e);
+            }
         };
         prepareAudio();
     }, []);
@@ -29,60 +52,112 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
         }
     }, [isVisible]);
 
+    const isLoaded = status && status.isLoaded;
+    const isPlaying = isLoaded && status.isPlaying;
+
     const togglePlayPause = () => {
-        if (status?.isLoaded) {
-            status.isPlaying ? videoRef.current?.pauseAsync() : videoRef.current?.playAsync();
+        if (isLoaded) {
+            isPlaying ? videoRef.current?.pauseAsync() : videoRef.current?.playAsync();
         }
     };
 
+    const handleLike = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setIsLiked(!isLiked);
+    };
+
+    const getProgress = () => {
+        if (isLoaded && status.durationMillis) {
+            return (status.positionMillis / status.durationMillis) * 100;
+        }
+        return 0;
+    };
+
     return (
-        <View style={{ width, height, backgroundColor: '#000' }}>
-            <TouchableOpacity activeOpacity={1} onPress={togglePlayPause} style={{ flex: 1 }}>
+        <View style={styles.reelContainer}>
+            <TouchableOpacity
+                activeOpacity={1}
+                onPress={togglePlayPause}
+                style={StyleSheet.absoluteFill}
+            >
                 <Video
                     ref={videoRef}
                     source={{ uri: item.videoUrl || item.attachments?.[0]?.url }}
-                    style={{ flex: 1 }}
+                    style={StyleSheet.absoluteFill}
+                    // ResizeMode.COVER is key to filling the screen perfectly
                     resizeMode={ResizeMode.COVER}
                     isLooping
-                    onPlaybackStatusUpdate={status => setStatus(() => status)}
+                    onPlaybackStatusUpdate={setStatus}
                 />
 
-                {/* Gradient Overlay for Text Readability */}
                 <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.8)']}
-                    style={{ position: 'absolute', bottom: 0, width: '100%', height: '50%' }}
+                    colors={['rgba(0,0,0,0.4)', 'transparent', 'transparent', 'rgba(0,0,0,0.7)']}
+                    style={StyleSheet.absoluteFill}
                 />
 
-                {/* Right Side Actions */}
-                <View style={{ position: 'absolute', right: 16, bottom: 100, alignItems: 'center', gap: 24 }}>
-                    <TouchableOpacity style={{ alignItems: 'center' }}>
-                        <Ionicons name="heart" size={36} color="white" />
-                        <Text style={{ color: 'white', marginTop: 4, fontFamily: 'Outfit-Bold' }}>{item.likes?.length || 0}</Text>
+                {!isPlaying && isLoaded && (
+                    <View style={styles.playIconContainer}>
+                        <View style={styles.playIconCircle}>
+                            <Ionicons name="play" size={wp('10%')} color="white" style={{ marginLeft: 5 }} />
+                        </View>
+                    </View>
+                )}
+
+                {/* Sidebar */}
+                <View style={styles.rightSidebar}>
+                    <TouchableOpacity style={styles.profileContainer}>
+                        <Image
+                            source={{ uri: item.avatar || `https://ui-avatars.com/api/?name=${item.user}` }}
+                            style={styles.avatar}
+                        />
+                        <View style={styles.plusIcon}>
+                            <Ionicons name="add" size={10} color="white" />
+                        </View>
                     </TouchableOpacity>
-                    <TouchableOpacity style={{ alignItems: 'center' }}>
-                        <Ionicons name="chatbubble" size={32} color="white" />
-                        <Text style={{ color: 'white', marginTop: 4, fontFamily: 'Outfit-Bold' }}>{item.comments?.length || 0}</Text>
+
+                    <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
+                        <Ionicons
+                            name={isLiked ? "heart" : "heart-outline"}
+                            size={wp('8.5%')}
+                            color={isLiked ? "#FF2D55" : "white"}
+                        />
+                        <Text style={styles.actionText}>{item.likes?.length || 0}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={{ alignItems: 'center' }}>
-                        <Ionicons name="share-social" size={32} color="white" />
-                        <Text style={{ color: 'white', marginTop: 4, fontFamily: 'Outfit-Bold' }}>Share</Text>
+
+                    <TouchableOpacity style={styles.actionButton}>
+                        <Ionicons name="chatbubble-outline" size={wp('8%')} color="white" />
+                        <Text style={styles.actionText}>{item.comments?.length || 0}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.actionButton}>
+                        <Ionicons name="share-social-outline" size={wp('8%')} color="white" />
+                        <Text style={styles.actionText}>Share</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Bottom Info Info */}
-                <View style={{ position: 'absolute', bottom: 40, left: 16, right: 80 }}>
-                    <Text style={{ color: 'white', fontSize: 18, fontFamily: 'Outfit-Bold', marginBottom: 8 }}>
+                {/* Content */}
+                <View style={styles.bottomInfo}>
+                    <Text style={styles.username}>
                         @{item.user || item.creatorId?.profile?.fullName || 'User'}
                     </Text>
-                    <Text style={{ color: 'white', fontSize: 14, fontFamily: 'Outfit-Regular' }} numberOfLines={3}>
+                    <Text style={styles.description} numberOfLines={2}>
                         {item.description || item.title || item.content}
                     </Text>
+                    <View style={styles.audioContainer}>
+                        <Ionicons name="musical-notes" size={14} color="white" />
+                        <Text style={styles.audioText}>Original Audio • {item.user || 'Unknown'}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.progressBarContainer}>
+                    <View style={[styles.progressBar, { width: `${getProgress()}%` }]} />
                 </View>
             </TouchableOpacity>
         </View>
     );
 };
 
+// --- Main Screen ---
 export default function ReelsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
@@ -91,62 +166,42 @@ export default function ReelsScreen() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const [activeViewableItem, setActiveViewableItem] = useState(id);
+    const [activeViewableItem, setActiveViewableItem] = useState<string | null>(null);
 
-    const fetchReels = async (pageNum = 1, shouldAppend = false) => {
+    const fetchReels = async (pageNum = 1) => {
         try {
             if (pageNum === 1) setLoading(true);
             else setLoadingMore(true);
 
-            // Fetch the unified reels feed (Native Reels + Posts with Video)
             const res = await feeds.getReels(pageNum, 10);
-            
             let newReels = res.data;
 
             if (pageNum === 1) {
-                // If it's the first page, ensure the clicked video (ID from params) is at the top
-                if (id && !newReels.find((r: any) => (r._id === id || r.id === id))) {
-                    // Fetch the specific item if it's not in the first page (WITHOUT hardcoding type)
-                    try {
+                if (id) {
+                    const exists = newReels.find((r: any) => r._id === id);
+                    if (!exists) {
                         const singleRes = await feeds.getFeedItem(id as string);
-                        if (singleRes.data) {
-                            newReels = [singleRes.data, ...newReels];
-                        }
-                    } catch (e) {
-                        console.error('Specific reel fetch failed:', e);
-                    }
-                } else if (id) {
-                    // Sort so the clicked reel is at index 0
-                    const clickedIdx = newReels.findIndex((r: any) => (r._id === id || r.id === id));
-                    if (clickedIdx > 0) {
-                        const clicked = newReels.splice(clickedIdx, 1)[0];
-                        newReels.unshift(clicked);
+                        if (singleRes.data) newReels = [singleRes.data, ...newReels];
+                    } else {
+                        newReels = [exists, ...newReels.filter((r: any) => r._id !== id)];
                     }
                 }
                 setReels(newReels);
+                if (newReels.length > 0) setActiveViewableItem(newReels[0]._id);
             } else {
                 setReels(prev => [...prev, ...newReels]);
             }
-
             setHasMore(newReels.length > 0);
             setPage(pageNum);
         } catch (error) {
-            console.error('Error fetching reels', error);
+            console.error('Fetch error', error);
         } finally {
             setLoading(false);
             setLoadingMore(false);
         }
     };
 
-    useEffect(() => {
-        fetchReels(1);
-    }, [id]);
-
-    const handleLoadMore = () => {
-        if (!loadingMore && hasMore) {
-            fetchReels(page + 1, true);
-        }
-    };
+    useEffect(() => { fetchReels(1); }, [id]);
 
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) {
@@ -154,25 +209,22 @@ export default function ReelsScreen() {
         }
     }).current;
 
-    const viewabilityConfig = useRef({
-        itemVisiblePercentThreshold: 50
-    }).current;
-
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator color="#84CC16" size="large" />
+            <View style={styles.centered}>
+                <ActivityIndicator color="#006400" size="large" />
             </View>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: 'black' }}>
-            <TouchableOpacity 
-                style={{ position: 'absolute', top: 50, left: 20, zIndex: 10, padding: 10, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20 }}
+        <View style={styles.mainContainer}>
+            <StatusBar hidden={true} />
+            <TouchableOpacity
+                style={styles.backButton}
                 onPress={() => router.back()}
             >
-                <Ionicons name="arrow-back" size={24} color="white" />
+                <Ionicons name="chevron-back" size={28} color="white" />
             </TouchableOpacity>
 
             <FlatList
@@ -184,19 +236,142 @@ export default function ReelsScreen() {
                 pagingEnabled
                 showsVerticalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
-                windowSize={5}
-                maxToRenderPerBatch={3}
-                onEndReached={handleLoadMore}
+                viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+                onEndReached={() => hasMore && !loadingMore && fetchReels(page + 1)}
                 onEndReachedThreshold={0.5}
-                ListFooterComponent={() => (
-                    loadingMore ? (
-                        <View style={{ paddingVertical: 20 }}>
-                            <ActivityIndicator color="#84CC16" />
-                        </View>
-                    ) : null
-                )}
+                removeClippedSubviews={Platform.OS === 'android'}
+                initialNumToRender={2}
+                maxToRenderPerBatch={3}
+                windowSize={5}
+                // Important: Match the FlatList height to the screen height
+                snapToInterval={SCREEN_HEIGHT}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                ListFooterComponent={() => loadingMore ? <ActivityIndicator color="#006400" style={{ marginVertical: 20 }} /> : null}
             />
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    mainContainer: {
+        flex: 1,
+        backgroundColor: 'black',
+    },
+    reelContainer: {
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT,
+        backgroundColor: '#000',
+    },
+    centered: {
+        flex: 1,
+        backgroundColor: 'black',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    backButton: {
+        position: 'absolute',
+        top: hp('5%'),
+        left: wp('4%'),
+        zIndex: 10,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    playIconContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    playIconCircle: {
+        width: wp('18%'),
+        height: wp('18%'),
+        borderRadius: wp('9%'),
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    rightSidebar: {
+        position: 'absolute',
+        right: wp('4%'),
+        bottom: hp('12%'),
+        alignItems: 'center',
+    },
+    profileContainer: {
+        marginBottom: hp('3%'),
+        alignItems: 'center'
+    },
+    avatar: {
+        width: wp('12%'),
+        height: wp('12%'),
+        borderRadius: wp('6%'),
+        borderWidth: 1.5,
+        borderColor: 'white'
+    },
+    plusIcon: {
+        position: 'absolute',
+        bottom: -4,
+        backgroundColor: '#FF2D55',
+        borderRadius: 9,
+        width: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    actionButton: {
+        alignItems: 'center',
+        marginBottom: hp('2.5%')
+    },
+    actionText: {
+        color: 'white',
+        fontSize: wp('3%'),
+        fontFamily: 'Outfit-Bold',
+        marginTop: 4,
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3
+    },
+    bottomInfo: {
+        position: 'absolute',
+        bottom: hp('6%'),
+        left: wp('4%'),
+        right: wp('22%'),
+    },
+    username: {
+        color: 'white',
+        fontSize: wp('4.2%'),
+        fontFamily: 'Outfit-Bold',
+        marginBottom: 4
+    },
+    description: {
+        color: 'white',
+        fontSize: wp('3.6%'),
+        fontFamily: 'Outfit-Regular',
+        lineHeight: 20
+    },
+    audioContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 10
+    },
+    audioText: {
+        color: 'white',
+        fontSize: wp('3%'),
+        fontFamily: 'Outfit-Medium',
+        marginLeft: 6
+    },
+    progressBarContainer: {
+        position: 'absolute',
+        bottom: 0,
+        width: '100%',
+        height: 1.5,
+        backgroundColor: 'rgba(255,255,255,0.1)'
+    },
+    progressBar: {
+        height: '100%',
+        backgroundColor: 'rgba(255,255,255,0.6)'
+    }
+});
