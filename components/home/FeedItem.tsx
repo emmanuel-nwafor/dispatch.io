@@ -89,7 +89,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply, onVideoPres
             return (
                 <TouchableOpacity 
                     activeOpacity={0.9}
-                    onPress={attachment.type === 'video' ? onVideoPress : undefined}
+                    onPress={attachment.type === 'video' ? handleVideoPress : handlePress}
                     className="mb-3 rounded-2xl overflow-hidden border" 
                     style={{ borderColor: isDark ? '#2f3336' : '#eff3f4' }}
                 >
@@ -115,7 +115,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply, onVideoPres
                     <TouchableOpacity
                         key={index}
                         activeOpacity={0.9}
-                        onPress={att.type === 'video' ? onVideoPress : undefined}
+                        onPress={att.type === 'video' ? handleVideoPress : handlePress}
                         style={{
                             width: attachments.length === 2 ? '50%' : (attachments.length >= 3 && index < 2 ? '50%' : '100%'),
                             height: attachments.length === 2 ? 200 : (attachments.length >= 3 && index < 2 ? 150 : 150),
@@ -138,11 +138,14 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, onPress, onApply, onVideoPres
     };
 
     const handlePress = () => {
-        if (item.type === 'reel') {
-            router.push({ pathname: "/screens/reels/[id]", params: { id: item.id } } as any);
-        } else {
-            router.push(`/screens/feed/${item.id}`);
-        }
+        // Main container click always goes to the post detail screen
+        router.push(`/screens/feed/${item.id}`);
+    };
+
+    const handleVideoPress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        // Video click specifically goes to the reels screen
+        router.push({ pathname: "/screens/reels/[id]", params: { id: item.id } } as any);
     };
 
     return (

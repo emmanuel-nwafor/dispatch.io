@@ -26,6 +26,7 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import { Skeleton } from '@/components/skeletons/HomeSkeleton';
 import { feeds as feedsApi } from '@/app/data/api';
 import Toast from 'react-native-toast-message';
+import { useFocusEffect } from '@react-navigation/native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -76,7 +77,13 @@ export default function UsersHomeScreen() {
                         },
                         attachments: [
                             ...(item.images ? item.images.map((img: string) => ({ type: 'image', url: img })) : []),
-                            ...(item.videoUrl ? [{ type: 'video', url: item.videoUrl, thumbnail: item.thumbnailUrl || item.videoUrl.replace(/\.[^.]+$/, '.jpg') }] : [])
+                            ...(item.videoUrl ? [{ 
+                                type: 'video', 
+                                url: item.videoUrl, 
+                                thumbnail: item.muxPlaybackId 
+                                    ? `https://image.mux.com/${item.muxPlaybackId}/thumbnail.jpg` 
+                                    : (item.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video') 
+                            }] : [])
                         ]
                     };
                 });
@@ -91,7 +98,11 @@ export default function UsersHomeScreen() {
         }
     }, []);
 
-    useEffect(() => { loadFeed(); }, [loadFeed]);
+    useFocusEffect(
+        useCallback(() => {
+            loadFeed();
+        }, [loadFeed])
+    );
 
     const onRefresh = useCallback(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

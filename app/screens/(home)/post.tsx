@@ -25,6 +25,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { user as userApi, posts as postsApi, reels as reelsApi, User } from '@/app/data/api';
 import { useFocusEffect } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
+
 
 export default function PostScreen() {
     const colorScheme = useColorScheme() ?? 'light';
@@ -101,12 +103,26 @@ export default function PostScreen() {
             const res = await postsApi.create(formData);
             if (res.success) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert("Success", "Post shared successfully!");
+                
+                // Clear inputs
+                setPostContent('');
+                setSelectedMedia([]);
+                
+                Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: 'Post shared successfully! 🚀'
+                });
+                
                 router.back();
             }
         } catch (error: any) {
             console.error("Posting Error:", error);
-            Alert.alert("Error", error.message || "Failed to share post. Please try again.");
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: error.message || "Failed to share post. Please try again."
+            });
         } finally {
             setLoading(false);
             setUploadProgress(0);

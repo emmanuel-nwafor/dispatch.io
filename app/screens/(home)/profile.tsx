@@ -191,6 +191,7 @@ export default function SeekersProfileScreen() {
             </View>
 
             <ScrollView
+                className="mb-24"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: hp('5%') }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#006400" />}
@@ -199,7 +200,7 @@ export default function SeekersProfileScreen() {
                 <View className="items-center mt-6 mb-8">
                     <View className="relative">
                         <View
-                            style={[styles.avatarBorder, { borderColor: isDark ? '#27272a' : '#fff' }]}
+                            style={{ borderColor: isDark ? '#27272a' : '#fff' }}
                             className="w-32 h-32 rounded-full border-4 overflow-hidden shadow-2xl bg-zinc-200 dark:bg-zinc-800"
                         >
                             <Image source={{ uri: avatar }} className="w-full h-full" />
@@ -295,11 +296,11 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit-Bold',
         fontSize: wp('6.5%'),
     },
-    avatarBorder: {
-        elevation: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-    }
+    // avatarBorder: {
+    //     elevation: 10,
+    //     shadowColor: '#000',
+    //     shadowOffset: { width: 0, height: 8 },
+    //     shadowOpacity: 0.15,
+    //     shadowRadius: 12,
+    // }
 });

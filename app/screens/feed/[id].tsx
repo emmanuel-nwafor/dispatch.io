@@ -41,7 +41,13 @@ export default function SingleFeedScreen() {
                     },
                     attachments: [
                         ...(data.images ? data.images.map((url: string) => ({ type: 'image', url })) : []),
-                        ...(data.videoUrl ? [{ type: 'video', url: data.videoUrl, thumbnail: data.thumbnailUrl || data.videoUrl.replace(/\.[^.]+$/, '.jpg') }] : [])
+                        ...(data.videoUrl ? [{ 
+                            type: 'video', 
+                            url: data.videoUrl, 
+                            thumbnail: data.muxPlaybackId 
+                                ? `https://image.mux.com/${data.muxPlaybackId}/thumbnail.jpg` 
+                                : (data.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video') 
+                        }] : [])
                     ],
                 };
 
