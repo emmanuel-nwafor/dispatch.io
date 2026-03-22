@@ -37,7 +37,7 @@ import CompleteProfileHeader from '@/components/profile/CompleteProfileHeader';
 import LocationPopup from '@/components/popups/LocationPopup';
 import SuccessModal from '@/components/modals/SuccessModal';
 
-export default function CompleteProfileScreen() {
+export default function UsersCompleteProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];

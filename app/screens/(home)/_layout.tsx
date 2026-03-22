@@ -36,9 +36,9 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="feed"
+                name="jobs"
                 options={{
-                    title: 'Feed',
+                    title: 'Jobs',
                     tabBarIcon: ({ color }) => <FontAwesome name="list-alt" size={24} color={color} />,
                 }}
             />

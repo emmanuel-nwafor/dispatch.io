@@ -88,39 +88,65 @@ export default function ReelsScreen() {
     const router = useRouter();
     const [reels, setReels] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
     const [activeViewableItem, setActiveViewableItem] = useState(id);
 
-    useEffect(() => {
-        const fetchReels = async () => {
-            try {
-                // Fetch the feed and extract all reels to allow swiping
-                const res = await feeds.getFeed(1, 50);
-                let availableReels = res.data.filter((item: any) => item.feedType === 'reel');
-                
-                // Fetch the specific reel clicked if it's not in the aggregated feed
-                if (!availableReels.find((r: any) => r._id === id)) {
-                    const singleRes = await feeds.getFeedItem(id as string, 'reel');
-                    if (singleRes.data) {
-                        availableReels = [singleRes.data, ...availableReels];
+    const fetchReels = async (pageNum = 1, shouldAppend = false) => {
+        try {
+            if (pageNum === 1) setLoading(true);
+            else setLoadingMore(true);
+
+            // Fetch the unified reels feed (Native Reels + Posts with Video)
+            const res = await feeds.getReels(pageNum, 10);
+            
+            let newReels = res.data;
+
+            if (pageNum === 1) {
+                // If it's the first page, ensure the clicked video (ID from params) is at the top
+                if (id && !newReels.find((r: any) => (r._id === id || r.id === id))) {
+                    // Fetch the specific item if it's not in the first page (WITHOUT hardcoding type)
+                    try {
+                        const singleRes = await feeds.getFeedItem(id as string);
+                        if (singleRes.data) {
+                            newReels = [singleRes.data, ...newReels];
+                        }
+                    } catch (e) {
+                        console.error('Specific reel fetch failed:', e);
                     }
-                } else {
+                } else if (id) {
                     // Sort so the clicked reel is at index 0
-                    const clickedIdx = availableReels.findIndex((r: any) => r._id === id);
+                    const clickedIdx = newReels.findIndex((r: any) => (r._id === id || r.id === id));
                     if (clickedIdx > 0) {
-                        const clicked = availableReels.splice(clickedIdx, 1)[0];
-                        availableReels.unshift(clicked);
+                        const clicked = newReels.splice(clickedIdx, 1)[0];
+                        newReels.unshift(clicked);
                     }
                 }
-                
-                setReels(availableReels);
-            } catch (error) {
-                console.error('Error fetching reels', error);
-            } finally {
-                setLoading(false);
+                setReels(newReels);
+            } else {
+                setReels(prev => [...prev, ...newReels]);
             }
-        };
-        fetchReels();
+
+            setHasMore(newReels.length > 0);
+            setPage(pageNum);
+        } catch (error) {
+            console.error('Error fetching reels', error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchReels(1);
     }, [id]);
+
+    const handleLoadMore = () => {
+        if (!loadingMore && hasMore) {
+            fetchReels(page + 1, true);
+        }
+    };
 
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) {
@@ -161,6 +187,15 @@ export default function ReelsScreen() {
                 viewabilityConfig={viewabilityConfig}
                 windowSize={5}
                 maxToRenderPerBatch={3}
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={() => (
+                    loadingMore ? (
+                        <View style={{ paddingVertical: 20 }}>
+                            <ActivityIndicator color="#84CC16" />
+                        </View>
+                    ) : null
+                )}
             />
         </View>
     );

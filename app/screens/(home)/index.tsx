@@ -1,12 +1,12 @@
 import { Colors } from '@/app/constants/Colors';
 import JobFilterModal from '@/components/modals/JobFilterModal';
-import FeedItem from '@/components/home/FeedItem';
+import FeedItem from '@/components/home/FeedItem'; // This now handles skeleton logic
 import HomeHeader from '@/components/home/HomeHeader';
 import PromotedBanner from '@/components/home/PromotedBanner';
 import FeaturedCompanies from '@/components/home/FeaturedCompanies';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     ScrollView,
     View,
@@ -23,7 +23,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { Skeleton } from '@/components/skeletons/HomeSkeleton';
 import { feeds as feedsApi } from '@/app/data/api';
 import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
@@ -47,7 +46,7 @@ export default function UsersHomeScreen() {
 
     const loadFeed = useCallback(async (isRefreshing = false) => {
         if (!isRefreshing) {
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            // Keep UI stable but show loading state
             setIsLoadingFeed(true);
         }
         try {
@@ -77,12 +76,12 @@ export default function UsersHomeScreen() {
                         },
                         attachments: [
                             ...(item.images ? item.images.map((img: string) => ({ type: 'image', url: img })) : []),
-                            ...(item.videoUrl ? [{ 
-                                type: 'video', 
-                                url: item.videoUrl, 
-                                thumbnail: item.muxPlaybackId 
-                                    ? `https://image.mux.com/${item.muxPlaybackId}/thumbnail.jpg` 
-                                    : (item.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video') 
+                            ...(item.videoUrl ? [{
+                                type: 'video',
+                                url: item.videoUrl,
+                                thumbnail: item.muxPlaybackId
+                                    ? `https://image.mux.com/${item.muxPlaybackId}/thumbnail.jpg`
+                                    : (item.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video')
                             }] : [])
                         ]
                     };
@@ -92,6 +91,7 @@ export default function UsersHomeScreen() {
         } catch (err) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Could not update feed' });
         } finally {
+            // Smooth transition from skeleton to content
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setIsLoadingFeed(false);
             setRefreshing(false);
@@ -115,7 +115,6 @@ export default function UsersHomeScreen() {
         return feedData.filter(item => {
             const content = (item.content || '').toLowerCase();
             const user = (item.user || '').toLowerCase();
-
             return content.includes(query) || user.includes(query);
         });
     }, [searchQuery, feedData]);
@@ -136,7 +135,7 @@ export default function UsersHomeScreen() {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
-                            tintColor="#006400" // Dark Green as requested
+                            tintColor="#006400"
                             colors={["#006400"]}
                         />
                     }
@@ -146,6 +145,7 @@ export default function UsersHomeScreen() {
                         <FeaturedCompanies />
                     </View>
 
+                    {/* Tabs */}
                     <View className="flex-row border-b" style={{ borderBottomColor: isDark ? '#2f3336' : '#eff3f4', backgroundColor: theme.background }}>
                         {(['forYou', 'following'] as const).map((tab) => (
                             <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} className="flex-1 py-4 items-center">
@@ -159,10 +159,14 @@ export default function UsersHomeScreen() {
                         ))}
                     </View>
 
+                    {/* Content Area */}
                     <View style={{ flex: 1 }}>
                         {isLoadingFeed ? (
-                            <View style={{ padding: wp('4%') }}>
-                                <Skeleton width={wp('92%')} height={hp('20%')} borderRadius={16} />
+                            <View>
+                                {/* We render 5 skeletons to fill the screen */}
+                                {[1, 2, 3, 4, 5].map((key) => (
+                                    <FeedItem key={key} loading={true} />
+                                ))}
                             </View>
                         ) : (
                             <View className="pb-32">

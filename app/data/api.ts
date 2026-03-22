@@ -55,6 +55,7 @@ export interface User {
     _id: string;
     id?: string;
     email: string;
+    username?: string;
     role: string;
     isProfileCompleted: boolean;
     avatar?: string;
@@ -273,6 +274,12 @@ export const posts = {
             method: 'POST',
             body: JSON.stringify({ text }),
         });
+    },
+    reshare: (id: string, content?: string) => {
+        return request<{ success: boolean; data: Post }>(`/posts/${id}/reshare`, {
+            method: 'POST',
+            body: JSON.stringify({ content }),
+        });
     }
 };
 
@@ -314,6 +321,11 @@ export const feeds = {
     },
     getFeedItem: (id: string, type?: string) => {
         return request<{ success: boolean; data: any }>(`/feed/${id}${type ? `?type=${type}` : ''}`, {
+            method: 'GET',
+        });
+    },
+    getReels: (page = 1, limit = 10) => {
+        return request<{ success: boolean; data: any[] }>(`/feed/reels?page=${page}&limit=${limit}`, {
             method: 'GET',
         });
     }
