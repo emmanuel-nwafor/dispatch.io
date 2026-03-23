@@ -2,7 +2,7 @@ import { Colors } from '@/app/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ScrollView,
     View,
@@ -11,22 +11,15 @@ import {
     StyleSheet,
     useColorScheme,
     Image,
+    ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { jobs as jobsApi, Job } from '@/app/data/api';
+import { formatRelative } from '@/app/utils/dateFormatter';
 
-interface PostedJob {
-    id: string;
-    title: string;
-    company: string;
-    location: string;
-    status: 'active' | 'closed';
-    applicants: {
-        total: number;
-        new: number;
-    };
-    postedDate: string;
-}
+// interface PostedJob removed since we use Job from api.ts
 
 export default function RecruitersJobs() {
     const router = useRouter();
@@ -34,77 +27,82 @@ export default function RecruitersJobs() {
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
 
-    const jobs: PostedJob[] = [
-        {
-            id: '1',
-            title: 'UI Engineer',
-            company: 'Dispatch.io',
-            location: 'London, UK (Remote)',
-            status: 'active',
-            applicants: { total: 124, new: 12 },
-            postedDate: '2d ago'
-        },
-        {
-            id: '2',
-            title: 'Senior Product Designer',
-            company: 'Dispatch.io',
-            location: 'London, UK',
-            status: 'active',
-            applicants: { total: 86, new: 5 },
-            postedDate: '5d ago'
-        },
-        {
-            id: '3',
-            title: 'Frontend Lead',
-            company: 'Dispatch.io',
-            location: 'Remote',
-            status: 'closed',
-            applicants: { total: 210, new: 0 },
-            postedDate: '2w ago'
-        }
-    ];
+    const [myJobs, setMyJobs] = useState<Job[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const renderJobItem = (job: PostedJob) => (
+    const loadJobs = async () => {
+        try {
+            const res = await jobsApi.getAll({ recruiter: 'me' });
+            if (res.success) {
+                setMyJobs(res.jobs);
+            }
+        } catch (error) {
+            console.error("Failed to load recruiter jobs:", error);
+        } finally {
+            setIsLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        loadJobs();
+    }, []);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadJobs();
+    };
+
+    const activePostingsCount = myJobs.filter(j => j.status === 'open').length;
+    const totalApplicantsCount = myJobs.reduce((acc, curr) => acc + (curr.applicantsCount || 0), 0);
+
+    const renderJobItem = (job: Job) => (
         <TouchableOpacity
-            key={job.id}
+            key={job._id}
             activeOpacity={0.7}
             style={[styles.jobCard, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}
-            onPress={() => { }}
+            onPress={() => router.push(`/screens/jobs/${job._id}` as any)}
         >
             <View style={styles.jobInfo}>
                 <Text style={[styles.jobTitle, { color: theme.text }]}>{job.title}</Text>
-                <Text style={styles.companyInfo}>{job.company} • {job.location}</Text>
+                <Text style={styles.companyInfo}>{job.companyName} • {job.location}</Text>
                 <View style={styles.statusRow}>
-                    <View style={[styles.statusBadge, { backgroundColor: job.status === 'active' ? 'rgba(132, 204, 22, 0.1)' : 'rgba(113, 113, 122, 0.1)' }]}>
-                        <Text style={[styles.statusText, { color: job.status === 'active' ? theme.brand : '#71717a' }]}>
-                            {job.status === 'active' ? 'Active' : 'Closed'}
+                    <View style={[styles.statusBadge, { backgroundColor: job.status === 'open' ? 'rgba(132, 204, 22, 0.1)' : 'rgba(113, 113, 122, 0.1)' }]}>
+                        <Text style={[styles.statusText, { color: job.status === 'open' ? theme.brand : '#71717a' }]}>
+                            {job.status === 'open' ? 'Active' : 'Closed'}
                         </Text>
                     </View>
-                    <Text style={styles.dateText}>Posted {job.postedDate}</Text>
+                    <Text style={styles.dateText}>Posted {formatRelative(job.createdAt)}</Text>
                 </View>
 
                 <View style={styles.metricsRow}>
                     <View style={styles.metric}>
-                        <Text style={[styles.metricValue, { color: theme.text }]}>{job.applicants.total}</Text>
+                        <Text style={[styles.metricValue, { color: theme.text }]}>{job.applicantsCount || 0}</Text>
                         <Text style={styles.metricLabel}>Applicants</Text>
                     </View>
-                    {job.applicants.new > 0 && (
-                        <View style={styles.metric}>
-                            <Text style={[styles.metricValue, { color: theme.brand }]}>{job.applicants.new}</Text>
-                            <Text style={styles.metricLabel}>New</Text>
-                        </View>
-                    )}
                 </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#71717a" />
         </TouchableOpacity>
     );
 
+    if (isLoading && !refreshing) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+                <ActivityIndicator size="large" color={theme.brand} />
+            </View>
+        );
+    }
+
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
             <StatusBar style={isDark ? "light" : "dark"} />
             <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.brand} />}
+                >
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={[styles.headerTitle, { color: theme.text }]}>Jobs</Text>
@@ -119,19 +117,27 @@ export default function RecruitersJobs() {
                     {/* Dashboard Stats */}
                     <View style={styles.dashboardGrid}>
                         <View style={[styles.dashboardCard, { backgroundColor: isDark ? '#111111' : '#f9f9f9', borderColor: isDark ? '#27272a' : '#f4f4f5' }]}>
-                            <Text style={[styles.dashValue, { color: theme.text }]}>2</Text>
+                            <Text style={[styles.dashValue, { color: theme.text }]}>{activePostingsCount}</Text>
                             <Text style={styles.dashLabel}>Active Postings</Text>
                         </View>
                         <View style={[styles.dashboardCard, { backgroundColor: isDark ? '#111111' : '#f9f9f9', borderColor: isDark ? '#27272a' : '#f4f4f5' }]}>
-                            <Text style={[styles.dashValue, { color: theme.brand }]}>17</Text>
-                            <Text style={styles.dashLabel}>New Applicants</Text>
+                            <Text style={[styles.dashValue, { color: theme.brand }]}>{totalApplicantsCount}</Text>
+                            <Text style={styles.dashLabel}>Total Applicants</Text>
                         </View>
                     </View>
 
                     {/* Jobs List */}
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Job Postings</Text>
-                        {jobs.map(renderJobItem)}
+                        {myJobs.length > 0 ? (
+                            myJobs.map(renderJobItem)
+                        ) : (
+                            <View style={{ padding: 20, alignItems: 'center' }}>
+                                <Text style={{ color: theme.text, fontFamily: 'Outfit-Regular', opacity: 0.7 }}>
+                                    You haven't posted any jobs yet.
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
                     <View style={{ height: 120 }} />

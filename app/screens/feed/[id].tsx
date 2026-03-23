@@ -41,10 +41,9 @@ export default function SingleFeedScreen() {
     const [commentText, setCommentText] = useState('');
     const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-    const scaleAnim = new Animated.Value(1);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
     const commentInputRef = useRef<TextInput>(null);
 
-    // Dark Green Constant
     const DARK_GREEN = '#006400';
 
     useEffect(() => {
@@ -96,7 +95,20 @@ export default function SingleFeedScreen() {
         if (!commentText.trim() || isSubmittingComment) return;
         setIsSubmittingComment(true);
         try {
-            // Placeholder for comment API: await postsApi.comment(data._id, commentText);
+            // Simulated API call - update based on your actual endpoint
+            // await postsApi.comment(data._id, commentText);
+
+            // Local update for UI responsiveness
+            const newComment = {
+                userId: currentUser,
+                text: commentText,
+                createdAt: new Date().toISOString()
+            };
+            setData((prev: any) => ({
+                ...prev,
+                comments: [newComment, ...(prev.comments || [])]
+            }));
+
             setCommentText('');
             Toast.show({ type: 'success', text1: 'Comment posted!' });
         } catch (error) {
@@ -153,7 +165,6 @@ export default function SingleFeedScreen() {
     const creatorId = data?.creatorId?._id || data?.creatorId?.id;
     const handle = `@${creatorName.replace(/\s+/g, '').toLowerCase()}`;
 
-    // --- PARENT (REPOSTED) POST DATA ---
     const parentPost = data?.parentPostId;
     const isRepost = !!parentPost;
     const parentCreatorName = parentPost?.creatorId?.profile?.fullName
@@ -192,8 +203,9 @@ export default function SingleFeedScreen() {
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{ flex: 1 }}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: hp('12%') }}>
                         {/* Reshare Label */}
                         {data.isReshare && (
                             <View style={styles.reshareLabel}>
@@ -224,7 +236,6 @@ export default function SingleFeedScreen() {
 
                         {/* Main Content Block */}
                         <View style={styles.contentBlock}>
-                            {/* Reposter's own commentary */}
                             {!!data.content && (
                                 <View>
                                     <Text style={[styles.postText, { color: theme.text }]}>
@@ -241,7 +252,7 @@ export default function SingleFeedScreen() {
                                 </View>
                             )}
 
-                            {/* Main Post Images (if any) */}
+                            {/* Main Post Images */}
                             {images.length > 0 && (
                                 <View style={[styles.imagesGrid, { borderColor }]}>
                                     {images.map((uri: string, idx: number) => (
@@ -252,7 +263,7 @@ export default function SingleFeedScreen() {
                                                 styles.gridImage,
                                                 {
                                                     width: images.length === 1 ? '100%' : '50%',
-                                                    height: images.length === 1 ? 260 : 160,
+                                                    height: images.length === 1 ? hp('30%') : hp('20%'),
                                                     borderColor,
                                                     borderWidth: idx > 0 ? 0.5 : 0,
                                                 }
@@ -263,7 +274,7 @@ export default function SingleFeedScreen() {
                                 </View>
                             )}
 
-                            {/* Parent Post (The Original Content) */}
+                            {/* Parent Post */}
                             {isRepost && (
                                 <TouchableOpacity
                                     activeOpacity={0.8}
@@ -279,19 +290,16 @@ export default function SingleFeedScreen() {
                                             · {formatRelative(parentPost.createdAt)}
                                         </Text>
                                     </View>
-
                                     {!!parentPost.content && (
                                         <Text style={[styles.quoteContent, { color: theme.text }]}>
                                             {parentPost.content}
                                         </Text>
                                     )}
-
-                                    {/* Show images of the original post if they exist */}
                                     {parentImages.length > 0 && (
                                         <View style={[styles.parentImagesRow, { borderTopWidth: 0.5, borderTopColor: borderColor }]}>
                                             <Image
                                                 source={{ uri: parentImages[0] }}
-                                                style={{ width: '100%', height: 180 }}
+                                                style={{ width: '100%', height: hp('20%') }}
                                                 resizeMode="cover"
                                             />
                                             {parentImages.length > 1 && (
@@ -317,7 +325,7 @@ export default function SingleFeedScreen() {
                                                 ? `https://image.mux.com/${data.muxPlaybackId}/thumbnail.jpg`
                                                 : (data.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video')
                                         }}
-                                        style={{ width: '100%', height: 220 }}
+                                        style={{ width: '100%', height: hp('25%') }}
                                         resizeMode="cover"
                                     />
                                     <View style={styles.playOverlay}>
@@ -330,10 +338,22 @@ export default function SingleFeedScreen() {
                         </View>
 
                         {/* Timestamp Info */}
-                        <View style={[styles.timestampRow, { borderTopColor: borderColor, borderBottomColor: borderColor }]}>
+                        <View style={styles.timestampRow}>
                             <Text style={[styles.timestampText, { color: subText }]}>
                                 {formatFullDate(data.createdAt)}
                             </Text>
+                        </View>
+
+                        {/* Stats Bar (X Style) */}
+                        <View style={[styles.statsBar, { borderTopColor: borderColor, borderBottomColor: borderColor }]}>
+                            <View style={styles.statItem}>
+                                <Text style={[styles.statNumber, { color: theme.text }]}>{data.reposts?.length || 0}</Text>
+                                <Text style={[styles.statLabel, { color: subText }]}> Reposts</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={[styles.statNumber, { color: theme.text }]}>{likeCount}</Text>
+                                <Text style={[styles.statLabel, { color: subText }]}> Likes</Text>
+                            </View>
                         </View>
 
                         {/* Engagement Actions */}
@@ -363,7 +383,7 @@ export default function SingleFeedScreen() {
                             <View>
                                 {comments.map((comment: any, idx: number) => {
                                     const commentUser = comment.userId;
-                                    const commentName = commentUser?.profile?.fullName || 'User';
+                                    const commentName = commentUser?.profile?.fullName || commentUser?.fullName || 'User';
                                     const commentAvatar = commentUser?.avatar || `https://ui-avatars.com/api/?name=${commentName.replace(/\s+/g, '+')}`;
                                     return (
                                         <View key={idx} style={[styles.commentRow, { borderBottomColor: borderColor }]}>
@@ -380,6 +400,14 @@ export default function SingleFeedScreen() {
                                                 <Text style={[styles.commentText, { color: theme.text }]}>
                                                     {comment.text}
                                                 </Text>
+                                                <View style={styles.commentActions}>
+                                                    <TouchableOpacity style={styles.commentActionBtn}>
+                                                        <Ionicons name="heart-outline" size={14} color={subText} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity style={styles.commentActionBtn}>
+                                                        <Ionicons name="chatbubble-outline" size={14} color={subText} />
+                                                    </TouchableOpacity>
+                                                </View>
                                             </View>
                                         </View>
                                     );
@@ -411,7 +439,11 @@ export default function SingleFeedScreen() {
                             disabled={!commentText.trim() || isSubmittingComment}
                             style={styles.sendBtn}
                         >
-                            <Text style={[styles.sendText, { opacity: commentText.trim() ? 1 : 0.5 }]}>Reply</Text>
+                            {isSubmittingComment ? (
+                                <ActivityIndicator size="small" color={DARK_GREEN} />
+                            ) : (
+                                <Text style={[styles.sendText, { opacity: commentText.trim() ? 1 : 0.5 }]}>Reply</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
@@ -433,7 +465,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: wp(4),
+        paddingHorizontal: wp('4%'),
         paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
         gap: 20,
@@ -443,7 +475,7 @@ const styles = StyleSheet.create({
     reshareLabel: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: wp(14), // Aligns with text, not avatar
+        paddingHorizontal: wp('14%'),
         paddingTop: 8,
         gap: 6,
     },
@@ -451,16 +483,16 @@ const styles = StyleSheet.create({
     authorRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        paddingHorizontal: wp(4),
+        paddingHorizontal: wp('4%'),
         paddingTop: 14,
         paddingBottom: 4,
         gap: 12,
     },
-    avatar: { width: 48, height: 48, borderRadius: 24 },
+    avatar: { width: wp('12%'), height: wp('12%'), borderRadius: wp('6%') },
     displayName: { fontFamily: 'Outfit-Bold', fontSize: 16 },
     handle: { fontFamily: 'Outfit-Regular', fontSize: 14, marginTop: 1 },
     moreBtn: { padding: 4, marginTop: 2 },
-    contentBlock: { paddingHorizontal: wp(4), paddingTop: 12, gap: 12 },
+    contentBlock: { paddingHorizontal: wp('4%'), paddingTop: 12, gap: 12 },
     postText: { fontFamily: 'Outfit-Light', fontSize: 18, lineHeight: 26 },
     imagesGrid: {
         flexDirection: 'row',
@@ -527,13 +559,22 @@ const styles = StyleSheet.create({
     },
     parentImageCountText: { color: 'white', fontSize: 10, fontFamily: 'Outfit-Bold' },
     timestampRow: {
-        paddingHorizontal: wp(4),
+        paddingHorizontal: wp('4%'),
         paddingVertical: 12,
         marginTop: 12,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     timestampText: { fontFamily: 'Outfit-Regular', fontSize: 14 },
+    statsBar: {
+        flexDirection: 'row',
+        paddingHorizontal: wp('4%'),
+        paddingVertical: 14,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        gap: 20,
+    },
+    statItem: { flexDirection: 'row', alignItems: 'center' },
+    statNumber: { fontFamily: 'Outfit-Bold', fontSize: 14 },
+    statLabel: { fontFamily: 'Outfit-Regular', fontSize: 14 },
     actionBar: {
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -544,7 +585,7 @@ const styles = StyleSheet.create({
     commentRow: {
         flexDirection: 'row',
         gap: 10,
-        paddingHorizontal: wp(4),
+        paddingHorizontal: wp('4%'),
         paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
@@ -553,15 +594,20 @@ const styles = StyleSheet.create({
     commentName: { fontFamily: 'Outfit-Bold', fontSize: 14, flexShrink: 1 },
     commentTime: { fontFamily: 'Outfit-Regular', fontSize: 12 },
     commentText: { fontFamily: 'Outfit-Regular', fontSize: 14, lineHeight: 20 },
+    commentActions: { flexDirection: 'row', marginTop: 8, gap: 20 },
+    commentActionBtn: { padding: 2 },
     emptyComments: { paddingVertical: 32, alignItems: 'center' },
     emptyCommentsText: { fontFamily: 'Outfit-Regular', fontSize: 14 },
     bottomInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: wp(4),
+        paddingHorizontal: wp('4%'),
         paddingVertical: 10,
         borderTopWidth: StyleSheet.hairlineWidth,
         gap: 10,
+        position: 'absolute',
+        bottom: 0,
+        width: '100%',
     },
     smallAvatar: { width: 32, height: 32, borderRadius: 16 },
     input: {

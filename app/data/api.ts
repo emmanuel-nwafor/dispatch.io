@@ -87,6 +87,7 @@ export interface Job {
     createdAt: string;
     updatedAt: string;
     recruiter: {
+        avatar: string;
         _id: string;
         email: string;
         profile: UserDetails;
@@ -218,7 +219,9 @@ export const user = {
         });
     },
     uploadImage: (formData: FormData) => {
-        return request<{ success: boolean; imageUrl: string; user: User }>('/users/upload', {
+        return request<{
+            message: string; success: boolean; imageUrl: string; user: User
+        }>('/users/upload', {
             method: 'POST',
             body: formData,
         });
@@ -229,7 +232,9 @@ export const user = {
         });
     },
     getMe: () => {
-        return request<{ success: boolean; user: User }>('/users/me', {
+        return request<{
+            message: string; success: boolean; user: User
+        }>('/users/me', {
             method: 'GET',
         });
     },
@@ -293,7 +298,9 @@ export const jobs = {
 
 export const posts = {
     create: (formData: FormData) => {
-        return request<{ success: boolean; data: Post }>('/posts', {
+        return request<{
+            message: string; success: boolean; data: Post
+        }>('/posts', {
             method: 'POST',
             body: formData,
         });

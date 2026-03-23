@@ -31,17 +31,8 @@ export default function RecruitersNetwork() {
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
 
-    const [invitations, setInvitations] = useState([
-        { id: '1', name: 'Sarah Chen', role: 'Fullstack Developer', avatar: 'https://i.pravatar.cc/150?u=sarah' },
-        { id: '2', name: 'Marcus Miller', role: 'Senior Product Designer', avatar: 'https://i.pravatar.cc/150?u=marcus' },
-    ]);
-
-    const suggestions: Candidate[] = [
-        { id: '3', name: 'Jordan Lee', role: 'DevOps Engineer at CloudScale', location: 'Greater London', avatar: 'https://i.pravatar.cc/150?u=jordan', mutualConnections: 12 },
-        { id: '4', name: 'Elena Rodriguez', role: 'Frontend Lead at Fintechly', location: 'Madrid, Spain', avatar: 'https://i.pravatar.cc/150?u=elena', mutualConnections: 5 },
-        { id: '5', name: 'Alex Thompson', role: 'Machine Learning Engineer', location: 'San Francisco, CA', avatar: 'https://i.pravatar.cc/150?u=alex', mutualConnections: 8 },
-        { id: '6', name: 'Priya Sharma', role: 'UX Research Lead', location: 'New York, NY', avatar: 'https://i.pravatar.cc/150?u=priya', mutualConnections: 21 },
-    ];
+    const [invitations, setInvitations] = useState<any[]>([]);
+    const [suggestions, setSuggestions] = useState<Candidate[]>([]);
 
     const renderInvitation = ({ item }: { item: any }) => (
         <View style={[styles.invitationCard, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}>

@@ -25,6 +25,9 @@ import { storage } from '@/app/utils/storage';
 import Toast from 'react-native-toast-message';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Constants for constraints
+const MAX_FILE_SIZE_MB = 5;
+
 interface MenuItemProps {
     icon: string;
     label: string;
@@ -54,15 +57,15 @@ const MenuItem = ({ icon, label, onPress, color, isLast, isDestructive }: MenuIt
                 style={{ backgroundColor: isDestructive ? 'rgba(239, 68, 68, 0.1)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)') }}
                 className="w-10 h-10 rounded-2xl items-center justify-center mr-4"
             >
-                <Ionicons name={icon as any} size={20} color={isDestructive ? '#ef4444' : (color || theme.text)} />
+                <Ionicons name={icon as any} size={wp('5%')} color={isDestructive ? '#ef4444' : (color || theme.text)} />
             </View>
             <Text
-                style={{ fontFamily: 'Outfit-Medium', color: isDestructive ? '#ef4444' : theme.text }}
-                className="flex-1 text-[15px]"
+                style={{ fontFamily: 'Outfit-Medium', color: isDestructive ? '#ef4444' : theme.text, fontSize: wp('3.8%') }}
+                className="flex-1"
             >
                 {label}
             </Text>
-            <Ionicons name="chevron-forward" size={18} color={isDark ? '#3f3f46' : '#d4d4d8'} />
+            <Ionicons name="chevron-forward" size={wp('4.5%')} color={isDark ? '#3f3f46' : '#d4d4d8'} />
         </TouchableOpacity>
     );
 };
@@ -84,10 +87,12 @@ export default function SeekersProfileScreen() {
             const res = await userApi.getMe();
             if (res.success) {
                 setUser(res.user);
+            } else {
+                throw new Error(res.message || 'Could not fetch profile');
             }
-        } catch (err) {
-            console.error("Profile Fetch Error:", err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load profile' });
+        } catch (err: any) {
+            const errorMsg = err.response?.data?.message || err.message || 'Failed to load profile';
+            Toast.show({ type: 'error', text1: 'Profile Error', text2: errorMsg });
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -104,21 +109,37 @@ export default function SeekersProfileScreen() {
     }, []);
 
     const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Toast.show({ type: 'info', text1: 'Permission Denied', text2: 'We need access to your photos' });
-            return;
-        }
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Toast.show({ type: 'info', text1: 'Permission Denied', text2: 'Please allow access to gallery in settings.' });
+                return;
+            }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.7,
-        });
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
 
-        if (!result.canceled) {
-            uploadAvatar(result.assets[0].uri);
+            if (!result.canceled) {
+                const asset = result.assets[0];
+
+                // File Size Restriction
+                if (asset.fileSize && asset.fileSize > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                    Toast.show({
+                        type: 'error',
+                        text1: 'File Too Large',
+                        text2: `Please select an image smaller than ${MAX_FILE_SIZE_MB}MB`
+                    });
+                    return;
+                }
+
+                uploadAvatar(asset.uri);
+            }
+        } catch (err) {
+            Toast.show({ type: 'error', text1: 'Picker Error', text2: 'Failed to open image gallery' });
         }
     };
 
@@ -128,12 +149,12 @@ export default function SeekersProfileScreen() {
             const formData = new FormData();
             const filename = uri.split('/').pop() || 'avatar.jpg';
             const match = /\.(\w+)$/.exec(filename);
-            const mimeType = match ? `image/${match[1]}` : `image/jpeg`;
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
 
             formData.append('file', {
                 uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
                 name: filename,
-                type: mimeType,
+                type,
             } as any);
 
             formData.append('type', 'avatar');
@@ -141,12 +162,14 @@ export default function SeekersProfileScreen() {
             const res = await userApi.uploadImage(formData);
 
             if (res.success) {
-                const updatedUser = { ...user, avatar: res.imageUrl } as User;
-                setUser(updatedUser);
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Avatar updated!' });
+                setUser(prev => prev ? { ...prev, avatar: res.imageUrl } : null);
+                Toast.show({ type: 'success', text1: 'Profile Updated', text2: 'Your avatar has been saved.' });
+            } else {
+                throw new Error(res.message || 'Upload failed');
             }
         } catch (error: any) {
-            Toast.show({ type: 'error', text1: 'Upload Failed', text2: error.message || 'Server error' });
+            const serverMessage = error.response?.data?.message || error.message || 'Server connection failed';
+            Toast.show({ type: 'error', text1: 'Upload Failed', text2: serverMessage });
         } finally {
             setUploading(false);
         }
@@ -157,7 +180,7 @@ export default function SeekersProfileScreen() {
         router.replace('/screens/auth/login');
     };
 
-    const fullName = user?.profile?.fullName || 'Anonymous';
+    const fullName = user?.profile?.fullName || 'User Name';
     const avatar = user?.avatar || `https://ui-avatars.com/api/?name=${fullName.replace(' ', '+')}&background=006400&color=fff`;
 
     if (loading) {
@@ -165,21 +188,8 @@ export default function SeekersProfileScreen() {
             <SafeAreaView className="flex-1" style={{ backgroundColor: theme.background }} edges={['top']}>
                 <View className="flex-row justify-between items-center px-6 py-4">
                     <Text style={styles.headerTitle} className={isDark ? "text-white" : "text-zinc-900"}>Profile</Text>
-                    <TouchableOpacity
-                        onPress={() => router.push({ pathname: '/screens/profile/[id]', params: { id: user?._id } } as any)}
-                        style={{ backgroundColor: isDark ? '#27272a' : '#f4f4f5' }}
-                        className="flex-row items-center px-4 py-2 rounded-full border border-zinc-200 dark:border-zinc-800"
-                    >
-                        <Ionicons name="eye-outline" size={16} color={isDark ? '#fff' : '#000'} />
-                        <Text
-                            className="ml-2 text-xs font-bold"
-                            style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#fff' : '#000' }}
-                        >
-                            Preview
-                        </Text>
-                    </TouchableOpacity>
                 </View>
-                <View className="flex-1 justify-center items-center" style={{ backgroundColor: theme.background }}>
+                <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color="#006400" />
                 </View>
             </SafeAreaView>
@@ -190,7 +200,6 @@ export default function SeekersProfileScreen() {
         <SafeAreaView className="flex-1" style={{ backgroundColor: theme.background }} edges={['top']}>
             <StatusBar style={isDark ? "light" : "dark"} />
 
-            {/* HEADER */}
             <View className="flex-row justify-between items-center px-6 py-4">
                 <Text style={styles.headerTitle} className={isDark ? "text-white" : "text-zinc-900"}>Profile</Text>
                 <TouchableOpacity
@@ -198,9 +207,9 @@ export default function SeekersProfileScreen() {
                     style={{ backgroundColor: isDark ? '#27272a' : '#f4f4f5' }}
                     className="flex-row items-center px-4 py-2 rounded-full border border-zinc-200 dark:border-zinc-800"
                 >
-                    <Ionicons name="eye-outline" size={16} color={isDark ? '#fff' : '#000'} />
+                    <Ionicons name="eye-outline" size={wp('4%')} color={isDark ? '#fff' : '#000'} />
                     <Text
-                        className="ml-2 text-xs font-bold"
+                        className="ml-2 text-xs"
                         style={{ fontFamily: 'Outfit-Bold', color: isDark ? '#fff' : '#000' }}
                     >
                         Preview
@@ -209,12 +218,11 @@ export default function SeekersProfileScreen() {
             </View>
 
             <ScrollView
-                className="mb-24"
+                className="flex-1 mb-24"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: hp('5%') }}
+                contentContainerStyle={{ paddingBottom: hp('12%') }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#006400" />}
             >
-                {/* PROFILE IDENTITY SECTION */}
                 <View className="items-center mt-6 mb-8">
                     <View className="relative">
                         <View
@@ -230,17 +238,18 @@ export default function SeekersProfileScreen() {
                         </View>
                         <TouchableOpacity
                             onPress={pickImage}
+                            disabled={uploading}
                             className="absolute bottom-1 right-1 w-9 h-9 rounded-full items-center justify-center border-2 border-white"
-                            style={{ backgroundColor: '#006400' }}
+                            style={{ backgroundColor: '#006400', opacity: uploading ? 0.7 : 1 }}
                         >
                             <Ionicons name="camera" size={16} color="white" />
                         </TouchableOpacity>
                     </View>
 
-                    <Text className="text-2xl mt-4" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{fullName}</Text>
+                    <Text className="text-2xl mt-4 text-center" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{fullName}</Text>
                     <View className="flex-row items-center mt-1">
                         <View className="px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                            <Text className="text-zinc-500 text-xs uppercase font-bold" style={{ fontFamily: 'Outfit-Bold' }}>
+                            <Text className="text-zinc-500 text-[10px] uppercase font-bold" style={{ fontFamily: 'Outfit-Bold' }}>
                                 {user?.role === 'seeker' ? 'Candidate' : 'Recruiter'}
                             </Text>
                         </View>
@@ -253,7 +262,7 @@ export default function SeekersProfileScreen() {
                 </View>
 
                 {/* STATS SECTION */}
-                <View className="flex-row justify-between px-6 mb-10">
+                <View className="flex-row justify-between px-6 mb-8">
                     {[
                         { label: 'Applied', value: user?.appliedJobsCount || 0, icon: 'send' },
                         { label: 'Match Rate', value: (user?.profile?.autoApply?.minMatchScore || 0) + '%', icon: 'flash' },
@@ -261,32 +270,31 @@ export default function SeekersProfileScreen() {
                     ].map((item, i) => (
                         <View
                             key={i}
-                            className="items-center py-4 rounded-[25px] shadow-sm border"
+                            className="items-center py-4 rounded-[25px] border"
                             style={{
                                 width: wp('28%'),
                                 backgroundColor: isDark ? '#1a1a1a' : '#fff',
                                 borderColor: isDark ? '#222' : '#f0f0f0'
                             }}
                         >
-                            <View className="w-8 h-8 rounded-full items-center justify-center mb-2 bg-green-50 dark:bg-green-900/20">
+                            <View className="w-8 h-8 rounded-full items-center justify-center mb-2 bg-green-50 dark:bg-green-900/10">
                                 <Ionicons name={item.icon as any} size={16} color="#006400" />
                             </View>
                             <Text className="text-lg" style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{item.value}</Text>
-                            <Text className="text-zinc-400 text-[10px] uppercase tracking-wider font-medium">{item.label}</Text>
+                            <Text className="text-zinc-400 text-[9px] uppercase tracking-wider font-medium">{item.label}</Text>
                         </View>
                     ))}
                 </View>
 
-                {/* MENU CONTENT */}
                 <View className="px-6">
                     <SectionLabel title="Account Management" />
                     <View
                         className="rounded-[30px] border overflow-hidden mb-8"
                         style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
                     >
-                        <MenuItem icon="person-outline" label="Personal Details" />
-                        <MenuItem icon="document-text-outline" label="Experience & Skills" />
-                        <MenuItem icon="settings-outline" label="Preferences" isLast />
+                        <MenuItem icon="person-outline" label="Personal Details" onPress={() => { }} />
+                        <MenuItem icon="document-text-outline" label="Experience & Skills" onPress={() => { }} />
+                        <MenuItem icon="settings-outline" label="Preferences" isLast onPress={() => { }} />
                     </View>
 
                     <SectionLabel title="Support" />
@@ -294,7 +302,7 @@ export default function SeekersProfileScreen() {
                         className="rounded-[30px] border overflow-hidden"
                         style={{ backgroundColor: isDark ? '#1a1a1a' : '#fff', borderColor: isDark ? '#222' : '#f0f0f0' }}
                     >
-                        <MenuItem icon="help-circle-outline" label="Help Center" />
+                        <MenuItem icon="help-circle-outline" label="Help Center" onPress={() => { }} />
                         <MenuItem icon="log-out-outline" label="Logout" isDestructive isLast onPress={handleLogout} />
                     </View>
                 </View>
@@ -314,11 +322,4 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit-Bold',
         fontSize: wp('6.5%'),
     },
-    // avatarBorder: {
-    //     elevation: 10,
-    //     shadowColor: '#000',
-    //     shadowOffset: { width: 0, height: 8 },
-    //     shadowOpacity: 0.15,
-    //     shadowRadius: 12,
-    // }
 });

@@ -34,47 +34,7 @@ export default function RecruitersMessages() {
 
     const [activeTab, setActiveTab] = useState<'focused' | 'other'>('focused');
 
-    const messages: Message[] = [
-        {
-            id: '1',
-            sender: 'Daniel Wright',
-            avatar: 'https://i.pravatar.cc/150?u=daniel',
-            lastMessage: 'Thanks for reaching out! I would love to discuss the UI Engineer role further.',
-            time: '10:45 AM',
-            jobTitle: 'UI Engineer',
-            isUnread: true,
-            category: 'focused'
-        },
-        {
-            id: '2',
-            sender: 'Sophia Martinez',
-            avatar: 'https://i.pravatar.cc/150?u=sophia',
-            lastMessage: 'The portfolio link is updated. Let me know if you need anything else.',
-            time: 'Yesterday',
-            jobTitle: 'Senior Product Designer',
-            isUnread: false,
-            category: 'focused'
-        },
-        {
-            id: '3',
-            sender: 'James Wilson',
-            avatar: 'https://i.pravatar.cc/150?u=james',
-            lastMessage: 'I am currently considering other offers, but thank you for the invite.',
-            time: '2d ago',
-            isUnread: false,
-            category: 'other'
-        },
-        {
-            id: '4',
-            sender: 'Emily Rose',
-            avatar: 'https://i.pravatar.cc/150?u=emily',
-            lastMessage: 'Hi Emmanuel, following up on our chat from last week.',
-            time: '3d ago',
-            jobTitle: 'Frontend Lead',
-            isUnread: true,
-            category: 'focused'
-        }
-    ];
+    const messages: Message[] = [];
 
     const filteredMessages = messages.filter(m => m.category === activeTab);
 

@@ -13,18 +13,61 @@ import {
     TextInput,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
+    Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { jobs as jobsApi } from '@/app/data/api';
+import { useUserStore } from '@/hooks/useUserStore';
 
 export default function RecruitersPost() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
+    const { user: currentUser } = useUserStore();
 
     const [step, setStep] = useState(1);
     const totalSteps = 3;
+
+    const [title, setTitle] = useState('');
+    const [jobType, setJobType] = useState('Remote');
+    const [description, setDescription] = useState('');
+    const [skills, setSkills] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handlePostJob = async () => {
+        if (!title.trim() || !description.trim()) {
+            Alert.alert("Missing Fields", "Please provide at least a title and description for the job.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const payload = {
+                title,
+                description,
+                jobType,
+                location: jobType === 'Remote' ? 'Remote' : 'Company Office', // simplified logic
+                skillsRequired: skills.split(',').map(s => s.trim()).filter(Boolean),
+                salaryRange: { min: 80000, max: 150000, currency: 'USD' }, // Default range since UI doesn't collect it yet
+                experienceLevel: 'Mid-Level',
+                status: 'open'
+            };
+
+            const res = await jobsApi.create(payload);
+            if (res.success) {
+                Alert.alert("Success", "Job posted successfully!");
+                router.back();
+            }
+        } catch (error) {
+            console.error("Failed to post job:", error);
+            Alert.alert("Error", "Failed to post job. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const renderHeader = () => (
         <View style={styles.header}>
@@ -66,6 +109,8 @@ export default function RecruitersPost() {
                 <TextInput
                     placeholder="e.g. Senior UI Engineer"
                     placeholderTextColor="#71717a"
+                    value={title}
+                    onChangeText={setTitle}
                     style={[styles.input, { color: theme.text, borderColor: isDark ? '#27272a' : '#e4e4e7' }]}
                 />
             </View>
@@ -73,7 +118,7 @@ export default function RecruitersPost() {
             <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: theme.text }]}>Company</Text>
                 <TextInput
-                    value="Dispatch.io"
+                    value={currentUser?.recruiterProfile?.companyName || "Your Company"}
                     editable={false}
                     style={[styles.input, { color: '#71717a', backgroundColor: isDark ? '#111111' : '#f9f9f9', borderColor: isDark ? '#27272a' : '#e4e4e7' }]}
                 />
@@ -85,9 +130,18 @@ export default function RecruitersPost() {
                     {['On-site', 'Remote', 'Hybrid'].map((type) => (
                         <TouchableOpacity
                             key={type}
-                            style={[styles.pill, { borderColor: isDark ? '#27272a' : '#e4e4e7' }]}
+                            onPress={() => setJobType(type)}
+                            style={[
+                                styles.pill,
+                                {
+                                    borderColor: jobType === type ? theme.brand : (isDark ? '#27272a' : '#e4e4e7'),
+                                    backgroundColor: jobType === type ? `${theme.brand}20` : 'transparent'
+                                }
+                            ]}
                         >
-                            <Text style={[styles.pillText, { color: theme.text }]}>{type}</Text>
+                            <Text style={[styles.pillText, { color: jobType === type ? theme.brand : theme.text }]}>
+                                {type}
+                            </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -105,6 +159,8 @@ export default function RecruitersPost() {
                     placeholder="Describe the role, responsibilities, and team..."
                     placeholderTextColor="#71717a"
                     multiline
+                    value={description}
+                    onChangeText={setDescription}
                     numberOfLines={8}
                     style={[styles.textArea, { color: theme.text, borderColor: isDark ? '#27272a' : '#e4e4e7' }]}
                 />
@@ -115,9 +171,11 @@ export default function RecruitersPost() {
                 <TextInput
                     placeholder="Add skills (e.g. React Native, TypeScript)"
                     placeholderTextColor="#71717a"
+                    value={skills}
+                    onChangeText={setSkills}
                     style={[styles.input, { color: theme.text, borderColor: isDark ? '#27272a' : '#e4e4e7' }]}
                 />
-                <Text style={styles.hintText}>Add up to 10 skills to help candidates find your job.</Text>
+                <Text style={styles.hintText}>Comma separate skills.</Text>
             </View>
         </View>
     );
@@ -171,11 +229,16 @@ export default function RecruitersPost() {
                 <View style={[styles.footer, { borderTopColor: isDark ? '#27272a' : '#f4f4f5' }]}>
                     <TouchableOpacity
                         style={[styles.nextButton, { backgroundColor: theme.brand }]}
-                        onPress={() => step < totalSteps ? setStep(step + 1) : router.back()}
+                        disabled={isSubmitting}
+                        onPress={() => step < totalSteps ? setStep(step + 1) : handlePostJob()}
                     >
-                        <Text style={styles.nextButtonText}>
-                            {step === totalSteps ? 'Post job' : 'Next'}
-                        </Text>
+                        {isSubmitting ? (
+                            <ActivityIndicator color="#000" />
+                        ) : (
+                            <Text style={styles.nextButtonText}>
+                                {step === totalSteps ? 'Post job' : 'Next'}
+                            </Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>

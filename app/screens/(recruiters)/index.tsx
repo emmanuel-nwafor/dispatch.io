@@ -27,6 +27,7 @@ import RecruiterProfileHeader from '@/components/recruiters/RecruiterProfileHead
 import RecruiterStats from '@/components/recruiters/RecruiterStats';
 import QuickActions from '@/components/recruiters/QuickActions';
 import FeedItem from '@/components/home/FeedItem';
+import { jobs } from '@/app/data/api'; // Import jobs API
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -41,16 +42,41 @@ export default function RecruitersHomeScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [userData, setUserData] = useState<User | null>(null);
+    const [recentJobs, setRecentJobs] = useState<any[]>([]);
 
     const loadData = useCallback(async () => {
         try {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            const response = await user.getMe();
-            if (response.success) {
-                setUserData(response.user);
+            
+            // Promise.all to fetch both profile and recent jobs concurrently
+            const [profileRes, jobsRes] = await Promise.all([
+                user.getMe(),
+                jobs.getAll({ recruiter: 'me', limit: 3 })
+            ]);
+
+            if (profileRes.success) {
+                setUserData(profileRes.user);
+            }
+            if (jobsRes.success) {
+                // Map to FeedItem format
+                const formatted = jobsRes.jobs.map(job => ({
+                    id: job._id,
+                    type: 'job',
+                    user: job.recruiter?.recruiterProfile?.companyName || job.companyName || 'Company Name',
+                    handle: `@${(job.recruiter?.recruiterProfile?.companyName || job.companyName || 'company').toLowerCase().replace(/\s/g, '_')}`,
+                    avatar: job.recruiter?.avatar || 'https://i.pravatar.cc/150?u=fallback',
+                    time: new Date(job.createdAt).toLocaleDateString(), // simplified time
+                    content: job.description?.substring(0, 150) + (job.description?.length > 150 ? '...' : ''),
+                    jobRole: job.title,
+                    salary: job.salaryRange ? `${job.salaryRange.currency} ${job.salaryRange.min} - ${job.salaryRange.max}` : 'Not Specified',
+                    location: job.location,
+                    stats: { comments: '0', reposts: '0', likes: '0' },
+                    job // Keep original job object
+                }));
+                setRecentJobs(formatted);
             }
         } catch (error) {
-            console.error("Failed to fetch recruiter profile:", error);
+            console.error("Failed to fetch recruiter dashboard data:", error);
         } finally {
             setIsLoading(false);
             setRefreshing(false);
@@ -73,21 +99,7 @@ export default function RecruitersHomeScreen() {
         router.replace('/screens/auth/login');
     };
 
-    const activeJobs = [
-        {
-            id: 1,
-            type: 'job',
-            user: userData?.profile?.fullName || 'Company Name',
-            handle: `@${userData?.profile?.fullName?.toLowerCase().replace(/\s/g, '_') || 'recruiter'}`,
-            avatar: userData?.profile?.resumeUrl || 'https://i.pravatar.cc/150?u=fallback',
-            time: '2d ago',
-            content: "We're looking for a UI Engineer to help us redefine travel. Must love Design Systems and React Native! ✈️",
-            jobRole: 'UI Engineer',
-            salary: '$140k - $180k',
-            stats: { comments: '12', reposts: '45', likes: '320' },
-        }
-    ];
-
+    // Removed mock activeJobs array
     if (isLoading && !refreshing) {
         return (
             <View className="flex-1 justify-center items-center" style={{ backgroundColor: theme.background }}>
@@ -146,19 +158,27 @@ export default function RecruitersHomeScreen() {
                     <View style={styles.sectionContainer}>
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Job Postings</Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push('/screens/(recruiters)/jobs' as any)}>
                                 <Text style={[styles.seeAll, { color: theme.brand }]}>Manage</Text>
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.jobsList}>
-                            {activeJobs.map((job) => (
-                                <FeedItem
-                                    key={job.id}
-                                    item={job as any}
-                                    onApply={() => { }}
-                                />
-                            ))}
+                            {recentJobs.length > 0 ? (
+                                recentJobs.map((job) => (
+                                    <FeedItem
+                                        key={job.id}
+                                        item={job as any}
+                                        onApply={() => { }}
+                                    />
+                                ))
+                            ) : (
+                                <View style={{ padding: 20, alignItems: 'center' }}>
+                                    <Text style={{ color: theme.text, fontFamily: 'Outfit-Regular', opacity: 0.7 }}>
+                                        No active job postings yet.
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </ScrollView>
