@@ -11,6 +11,7 @@ export const toastConfig: ToastConfig = {
             overflow: 'hidden',
             borderWidth: 1,
             borderColor: 'rgba(223, 255, 0, 0.2)',
+            padding: 4,
             backgroundColor: '#064e3b',
         }}>
             <View style={{
@@ -50,6 +51,7 @@ export const toastConfig: ToastConfig = {
             overflow: 'hidden',
             borderWidth: 1,
             borderColor: 'rgba(239, 68, 68, 0.2)',
+            padding: 4,
             backgroundColor: '#450a0a',
         }}>
             <View style={{
@@ -88,6 +90,7 @@ export const toastConfig: ToastConfig = {
             overflow: 'hidden',
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.1)',
+            padding: 4,
             backgroundColor: '#18181b',
         }}>
             <View style={{

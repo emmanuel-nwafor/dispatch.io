@@ -30,17 +30,14 @@ const StatItem = ({ label, value, icon, color }: StatItemProps) => {
     );
 };
 
-const RecruiterStats = () => {
+interface RecruiterStatsProps {
+    stats: StatItemProps[];
+}
+
+const RecruiterStats = ({ stats }: RecruiterStatsProps) => {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
-
-    const stats = [
-        { label: 'Active Jobs', value: '8', icon: 'briefcase', color: theme.brand },
-        { label: 'New Applicants', value: '42', icon: 'people', color: '#3b82f6' },
-        { label: 'Post Views', value: '1.2k', icon: 'eye', color: '#8b5cf6' },
-        { label: 'Rank', value: 'Top 5%', icon: 'trending-up', color: '#f59e0b' },
-    ];
 
     return (
         <View style={styles.container}>

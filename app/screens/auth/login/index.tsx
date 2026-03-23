@@ -67,7 +67,7 @@ export default function Login() {
                  * Based on your shared JSON: response.user.isProfileCompleted
                  */
                 if (response.user.isProfileCompleted === false) {
-                    router.replace('/screens/complete-profile');
+                    router.replace('/screens/complete-profile/recruiter');
                     return;
                 }
 

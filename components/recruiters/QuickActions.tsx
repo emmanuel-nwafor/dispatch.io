@@ -25,7 +25,13 @@ const QuickAction = ({ label, icon, onPress }: QuickActionProps) => {
     );
 };
 
-const QuickActions = () => {
+interface QuickActionsProps {
+    onPostJob: () => void;
+    onSourcing: () => void;
+    onSchedule: () => void;
+}
+
+const QuickActions = ({ onPostJob, onSourcing, onSchedule }: QuickActionsProps) => {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
@@ -33,9 +39,9 @@ const QuickActions = () => {
         <View style={styles.container}>
             <Text style={[styles.title, { color: theme.text }]}>Quick Actions</Text>
             <View style={styles.actionsRow}>
-                <QuickAction label="Post Job" icon="add-circle" />
-                <QuickAction label="Sourcing" icon="search" />
-                <QuickAction label="Schedule" icon="calendar" />
+                <QuickAction label="Post Job" icon="add-circle" onPress={onPostJob} />
+                <QuickAction label="Sourcing" icon="search" onPress={onSourcing} />
+                <QuickAction label="Schedule" icon="calendar" onPress={onSchedule} />
             </View>
         </View>
     );

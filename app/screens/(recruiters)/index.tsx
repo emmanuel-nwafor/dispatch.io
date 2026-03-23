@@ -43,6 +43,7 @@ export default function RecruitersHomeScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [userData, setUserData] = useState<User | null>(null);
     const [recentJobs, setRecentJobs] = useState<any[]>([]);
+    const [dashboardStats, setDashboardStats] = useState({ activeJobs: '0', applicants: '0', followers: '0', score: 'N/A' });
 
     const loadData = useCallback(async () => {
         try {
@@ -51,15 +52,29 @@ export default function RecruitersHomeScreen() {
             // Promise.all to fetch both profile and recent jobs concurrently
             const [profileRes, jobsRes] = await Promise.all([
                 user.getMe(),
-                jobs.getAll({ recruiter: 'me', limit: 3 })
+                jobs.getAll({ recruiter: 'me', limit: 50 })
             ]);
 
             if (profileRes.success) {
                 setUserData(profileRes.user);
+                setDashboardStats(prev => ({
+                    ...prev,
+                    followers: (profileRes.user.followers?.length || 0).toString(),
+                    score: profileRes.user.recruiterProfile?.accountabilityScore?.toString() || 'N/A'
+                }));
             }
             if (jobsRes.success) {
-                // Map to FeedItem format
-                const formatted = jobsRes.jobs.map(job => ({
+                const totalJobs = jobsRes.pagination?.totalJobs || jobsRes.jobs.length || 0;
+                const totalApplicants = jobsRes.jobs.reduce((sum: number, job: any) => sum + (job.applicantsCount || 0), 0);
+                
+                setDashboardStats(prev => ({
+                    ...prev,
+                    activeJobs: totalJobs.toString(),
+                    applicants: totalApplicants.toString()
+                }));
+
+                // Map to FeedItem format, keeping only top 3 for the recent jobs feed
+                const formatted = jobsRes.jobs.slice(0, 3).map((job: any) => ({
                     id: job._id,
                     type: 'job',
                     user: job.recruiter?.recruiterProfile?.companyName || job.companyName || 'Company Name',
@@ -141,19 +156,28 @@ export default function RecruitersHomeScreen() {
                     }
                 >
                     <RecruiterProfileHeader
-                        name={userData?.profile?.fullName || "Recruiter Name"}
-                        headline={userData?.profile?.bio || "Talent Acquisition Specialist"}
-                        location={userData?.profile?.location || "Global"}
-                        avatarUrl={userData?.profile?.resumeUrl || "https://i.pravatar.cc/300?u=recruiter"}
-                        bannerUrl="https://images.unsplash.com/photo-1557683316-973673baf926?w=1000"
+                        name={userData?.recruiterProfile?.companyName || userData?.profile?.fullName || "Recruiter Name"}
+                        headline={userData?.recruiterProfile?.industry || userData?.profile?.bio || "Talent Acquisition Specialist"}
+                        location={userData?.recruiterProfile?.location || userData?.profile?.location || "Global"}
+                        avatarUrl={userData?.avatar || "https://i.pravatar.cc/300?u=recruiter"}
+                        bannerUrl={userData?.coverImage || "https://images.unsplash.com/photo-1557683316-973673baf926?w=1000"}
                         onEditPress={() => {
                             Haptics.selectionAsync();
                             router.push('/screens/profile/edit');
                         }}
                     />
 
-                    <RecruiterStats />
-                    <QuickActions />
+                    <RecruiterStats stats={[
+                        { label: 'Active Jobs', value: dashboardStats.activeJobs, icon: 'briefcase', color: theme.brand },
+                        { label: 'New Applicants', value: dashboardStats.applicants, icon: 'people', color: '#3b82f6' },
+                        { label: 'Followers', value: dashboardStats.followers, icon: 'people-circle-outline', color: '#8b5cf6' },
+                        { label: 'Score', value: dashboardStats.score, icon: 'star', color: '#f59e0b' },
+                    ]} />
+                    <QuickActions 
+                        onPostJob={() => router.push('/screens/(recruiters)/post' as any)}
+                        onSourcing={() => router.push('/screens/(recruiters)/network' as any)}
+                        onSchedule={() => router.push('/screens/(recruiters)/messages' as any)}
+                    />
 
                     <View style={styles.sectionContainer}>
                         <View style={styles.sectionHeader}>
