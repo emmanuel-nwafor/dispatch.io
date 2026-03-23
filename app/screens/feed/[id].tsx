@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -9,13 +9,16 @@ import {
     StyleSheet,
     Animated,
     useColorScheme,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { feeds, posts as postsApi } from '@/app/data/api';
 import { Colors } from '@/app/constants/Colors';
-import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import * as Haptics from 'expo-haptics';
 import { useUserStore } from '@/hooks/useUserStore';
 import Toast from 'react-native-toast-message';
@@ -34,7 +37,15 @@ export default function SingleFeedScreen() {
     const [isLiked, setIsLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
     const [shareVisible, setShareVisible] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [commentText, setCommentText] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
     const scaleAnim = new Animated.Value(1);
+    const commentInputRef = useRef<TextInput>(null);
+
+    // Dark Green Constant
+    const DARK_GREEN = '#006400';
 
     useEffect(() => {
         const fetchItem = async () => {
@@ -43,7 +54,7 @@ export default function SingleFeedScreen() {
                 const d = res.data;
 
                 if (d.feedType === 'reel') {
-                    router.replace({ pathname: '/screens/reels/[id]', params: { id: d._id } });
+                    router.replace({ pathname: '/screens/reels/[id]', params: { id: d._id } } as any);
                     return;
                 }
 
@@ -73,7 +84,25 @@ export default function SingleFeedScreen() {
             await postsApi.like(data._id);
         } catch {
             setIsLiked(p => !p);
-            setLikeCount(p => isLiked ? p + 1 : p - 1);
+            setLikeCount(p => (isLiked ? p + 1 : p - 1));
+        }
+    };
+
+    const handleCommentPress = () => {
+        commentInputRef.current?.focus();
+    };
+
+    const submitComment = async () => {
+        if (!commentText.trim() || isSubmittingComment) return;
+        setIsSubmittingComment(true);
+        try {
+            // Placeholder for comment API: await postsApi.comment(data._id, commentText);
+            setCommentText('');
+            Toast.show({ type: 'success', text1: 'Comment posted!' });
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Failed to post comment' });
+        } finally {
+            setIsSubmittingComment(false);
         }
     };
 
@@ -103,7 +132,9 @@ export default function SingleFeedScreen() {
         if (!dateStr) return '';
         const now = new Date();
         const past = new Date(dateStr);
-        const mins = Math.floor((now.getTime() - past.getTime()) / 60000);
+        const diffInMs = now.getTime() - past.getTime();
+        const mins = Math.floor(diffInMs / 60000);
+        if (mins < 1) return 'now';
         if (mins < 60) return `${mins}m`;
         const hours = Math.floor(mins / 60);
         if (hours < 24) return `${hours}h`;
@@ -113,7 +144,6 @@ export default function SingleFeedScreen() {
     const borderColor = isDark ? '#2f3336' : '#eff3f4';
     const subText = '#71717a';
 
-    // ── Derived data ────────────────────────────────────────────────────────
     const creatorName = data?.creatorId?.profile?.fullName
         || data?.creatorId?.recruiterProfile?.companyName
         || data?.recruiter?.recruiterProfile?.companyName
@@ -123,17 +153,22 @@ export default function SingleFeedScreen() {
     const creatorId = data?.creatorId?._id || data?.creatorId?.id;
     const handle = `@${creatorName.replace(/\s+/g, '').toLowerCase()}`;
 
+    // --- PARENT (REPOSTED) POST DATA ---
     const parentPost = data?.parentPostId;
+    const isRepost = !!parentPost;
     const parentCreatorName = parentPost?.creatorId?.profile?.fullName
         || parentPost?.creatorId?.recruiterProfile?.companyName || 'User';
     const parentAvatar = parentPost?.creatorId?.avatar
         || `https://ui-avatars.com/api/?name=${parentCreatorName.replace(/\s+/g, '+')}`;
 
     const images: string[] = data?.images || [];
+    const parentImages: string[] = parentPost?.images || [];
     const comments: any[] = data?.comments || [];
-    const reshares: any[] = data?.reshares || [];
 
-    // ── Render ───────────────────────────────────────────────────────────────
+    const TEXT_LIMIT = 200;
+    const shouldShowReadMore = (data?.content?.length || 0) > TEXT_LIMIT;
+    const displayedContent = isExpanded ? data?.content : data?.content?.substring(0, TEXT_LIMIT);
+
     return (
         <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]} edges={['top']}>
             {/* Header */}
@@ -146,7 +181,7 @@ export default function SingleFeedScreen() {
 
             {loading ? (
                 <View style={styles.centered}>
-                    <ActivityIndicator color={theme.brand} size="large" />
+                    <ActivityIndicator color={DARK_GREEN} size="large" />
                 </View>
             ) : !data ? (
                 <View style={styles.centered}>
@@ -154,231 +189,232 @@ export default function SingleFeedScreen() {
                     <Text style={[styles.emptyText, { color: subText }]}>Post not found.</Text>
                 </View>
             ) : (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    {/* Reshare indicator */}
-                    {data.isReshare && (
-                        <View style={[styles.reshareLabel, { borderBottomColor: borderColor }]}>
-                            <Ionicons name="repeat" size={14} color={subText} />
-                            <Text style={[styles.reshareLabelText, { color: subText }]}>
-                                {creatorName} reshared
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Author row */}
-                    <View style={styles.authorRow}>
-                        <TouchableOpacity
-                            onPress={() => router.push(`/screens/profile/${creatorId}` as any)}
-                        >
-                            <Image source={{ uri: creatorAvatar }} style={styles.avatar} />
-                        </TouchableOpacity>
-                        <View style={{ flex: 1 }}>
-                            <TouchableOpacity
-                                onPress={() => router.push(`/screens/profile/${creatorId}` as any)}
-                            >
-                                <Text style={[styles.displayName, { color: theme.text }]} numberOfLines={1}>
-                                    {creatorName}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                        {/* Reshare Label */}
+                        {data.isReshare && (
+                            <View style={styles.reshareLabel}>
+                                <Ionicons name="repeat" size={14} color={subText} />
+                                <Text style={[styles.reshareLabelText, { color: subText }]}>
+                                    {creatorName} reshared
                                 </Text>
-                            </TouchableOpacity>
-                            <Text style={[styles.handle, { color: subText }]}>{handle}</Text>
-                        </View>
-                        <TouchableOpacity style={styles.moreBtn}>
-                            <Ionicons name="ellipsis-horizontal" size={18} color={subText} />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Post content */}
-                    <View style={styles.contentBlock}>
-                        {!!data.content && (
-                            <Text style={[styles.postText, { color: theme.text }]}>
-                                {data.content}
-                            </Text>
-                        )}
-
-                        {/* Attached images */}
-                        {images.length > 0 && (
-                            <View style={[styles.imagesGrid, { borderColor }]}>
-                                {images.map((uri: string, idx: number) => (
-                                    <Image
-                                        key={idx}
-                                        source={{ uri }}
-                                        style={[
-                                            styles.gridImage,
-                                            {
-                                                width: images.length === 1 ? '100%' : '50%',
-                                                height: images.length === 1 ? 260 : 160,
-                                                borderColor,
-                                                borderWidth: idx > 0 ? 0.5 : 0,
-                                            }
-                                        ]}
-                                        resizeMode="cover"
-                                    />
-                                ))}
                             </View>
                         )}
 
-                        {/* Attached video thumbnail */}
-                        {!!data.videoUrl && (
-                            <TouchableOpacity
-                                activeOpacity={0.9}
-                                style={[styles.videoThumb, { borderColor }]}
-                                onPress={() => router.push({ pathname: '/screens/reels/[id]', params: { id: data._id } } as any)}
-                            >
-                                <Image
-                                    source={{
-                                        uri: data.muxPlaybackId
-                                            ? `https://image.mux.com/${data.muxPlaybackId}/thumbnail.jpg`
-                                            : (data.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video')
-                                    }}
-                                    style={{ width: '100%', height: 220 }}
-                                    resizeMode="cover"
-                                />
-                                <View style={styles.playOverlay}>
-                                    <View style={styles.playCircle}>
-                                        <Ionicons name="play" size={28} color="white" style={{ marginLeft: 4 }} />
-                                    </View>
-                                </View>
+                        {/* Author Info */}
+                        <View style={styles.authorRow}>
+                            <TouchableOpacity onPress={() => router.push(`/screens/profile/${creatorId}` as any)}>
+                                <Image source={{ uri: creatorAvatar }} style={styles.avatar} />
                             </TouchableOpacity>
-                        )}
+                            <View style={{ flex: 1 }}>
+                                <TouchableOpacity onPress={() => router.push(`/screens/profile/${creatorId}` as any)}>
+                                    <Text style={[styles.displayName, { color: theme.text }]} numberOfLines={1}>
+                                        {creatorName}
+                                    </Text>
+                                </TouchableOpacity>
+                                <Text style={[styles.handle, { color: subText }]}>{handle}</Text>
+                            </View>
+                            <TouchableOpacity style={styles.moreBtn}>
+                                <Ionicons name="ellipsis-horizontal" size={18} color={subText} />
+                            </TouchableOpacity>
+                        </View>
 
-                        {/* Reshared post card */}
-                        {parentPost && (
-                            <View style={[styles.quoteCard, { borderColor, backgroundColor: isDark ? '#16181c' : '#f8fafc' }]}>
-                                <View style={styles.quoteHeader}>
-                                    <Image
-                                        source={{ uri: parentAvatar }}
-                                        style={styles.quoteAvatar}
-                                    />
-                                    <Text style={[styles.quoteDisplayName, { color: theme.text }]} numberOfLines={1}>
-                                        {parentCreatorName}
+                        {/* Main Content Block */}
+                        <View style={styles.contentBlock}>
+                            {/* Reposter's own commentary */}
+                            {!!data.content && (
+                                <View>
+                                    <Text style={[styles.postText, { color: theme.text }]}>
+                                        {displayedContent}
+                                        {!isExpanded && shouldShowReadMore && '...'}
                                     </Text>
-                                    <View style={[styles.originalBadge, { backgroundColor: isDark ? '#2f3336' : '#e2e8f0' }]}>
-                                        <Text style={[styles.originalBadgeText, { color: subText }]}>Original</Text>
-                                    </View>
-                                    <Text style={[styles.quoteTime, { color: subText }]}>
-                                        · {formatRelative(parentPost.createdAt)}
-                                    </Text>
+                                    {shouldShowReadMore && (
+                                        <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)} style={{ marginTop: 4 }}>
+                                            <Text style={{ color: DARK_GREEN, fontFamily: 'Outfit-Bold' }}>
+                                                {isExpanded ? 'Show less' : 'Read more'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                                {!!parentPost.content && (
-                                    <Text style={[styles.quoteContent, { color: theme.text }]}>
-                                        {parentPost.content}
-                                    </Text>
-                                )}
-                                {(parentPost.images || []).length > 0 && (
-                                    <View style={[styles.quoteImagesRow, { borderTopColor: borderColor }]}>
-                                        {(parentPost.images as string[]).slice(0, 3).map((uri: string, i: number) => (
+                            )}
+
+                            {/* Main Post Images (if any) */}
+                            {images.length > 0 && (
+                                <View style={[styles.imagesGrid, { borderColor }]}>
+                                    {images.map((uri: string, idx: number) => (
+                                        <Image
+                                            key={idx}
+                                            source={{ uri }}
+                                            style={[
+                                                styles.gridImage,
+                                                {
+                                                    width: images.length === 1 ? '100%' : '50%',
+                                                    height: images.length === 1 ? 260 : 160,
+                                                    borderColor,
+                                                    borderWidth: idx > 0 ? 0.5 : 0,
+                                                }
+                                            ]}
+                                            resizeMode="cover"
+                                        />
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Parent Post (The Original Content) */}
+                            {isRepost && (
+                                <TouchableOpacity
+                                    activeOpacity={0.8}
+                                    onPress={() => router.push({ pathname: '/screens/feed/[id]', params: { id: parentPost._id } } as any)}
+                                    style={[styles.quoteCard, { borderColor, backgroundColor: isDark ? '#16181c' : '#f8fafc' }]}
+                                >
+                                    <View style={styles.quoteHeader}>
+                                        <Image source={{ uri: parentAvatar }} style={styles.quoteAvatar} />
+                                        <Text style={[styles.quoteDisplayName, { color: theme.text }]} numberOfLines={1}>
+                                            {parentCreatorName}
+                                        </Text>
+                                        <Text style={[styles.quoteTime, { color: subText }]}>
+                                            · {formatRelative(parentPost.createdAt)}
+                                        </Text>
+                                    </View>
+
+                                    {!!parentPost.content && (
+                                        <Text style={[styles.quoteContent, { color: theme.text }]}>
+                                            {parentPost.content}
+                                        </Text>
+                                    )}
+
+                                    {/* Show images of the original post if they exist */}
+                                    {parentImages.length > 0 && (
+                                        <View style={[styles.parentImagesRow, { borderTopWidth: 0.5, borderTopColor: borderColor }]}>
                                             <Image
-                                                key={i}
-                                                source={{ uri }}
-                                                style={[
-                                                    styles.quoteImage,
-                                                    { borderLeftWidth: i > 0 ? 1 : 0, borderColor: borderColor }
-                                                ]}
+                                                source={{ uri: parentImages[0] }}
+                                                style={{ width: '100%', height: 180 }}
                                                 resizeMode="cover"
                                             />
-                                        ))}
-                                    </View>
-                                )}
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Full timestamp */}
-                    <View style={[styles.timestampRow, { borderTopColor: borderColor, borderBottomColor: borderColor }]}>
-                        <Text style={[styles.timestampText, { color: subText }]}>
-                            {formatFullDate(data.createdAt)}
-                        </Text>
-                    </View>
-
-                    {/* Engagement counts */}
-                    {(comments.length > 0 || reshares.length > 0 || likeCount > 0) && (
-                        <View style={[styles.countsRow, { borderBottomColor: borderColor }]}>
-                            {reshares.length > 0 && (
-                                <View style={styles.countItem}>
-                                    <Text style={[styles.countNum, { color: theme.text }]}>{reshares.length}</Text>
-                                    <Text style={[styles.countLabel, { color: subText }]}>Reposts</Text>
-                                </View>
+                                            {parentImages.length > 1 && (
+                                                <View style={styles.parentImageCount}>
+                                                    <Text style={styles.parentImageCountText}>+{parentImages.length - 1}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
                             )}
-                            {likeCount > 0 && (
-                                <View style={styles.countItem}>
-                                    <Text style={[styles.countNum, { color: theme.text }]}>{likeCount}</Text>
-                                    <Text style={[styles.countLabel, { color: subText }]}>Likes</Text>
-                                </View>
-                            )}
-                            {comments.length > 0 && (
-                                <View style={styles.countItem}>
-                                    <Text style={[styles.countNum, { color: theme.text }]}>{comments.length}</Text>
-                                    <Text style={[styles.countLabel, { color: subText }]}>Replies</Text>
-                                </View>
-                            )}
-                        </View>
-                    )}
 
-                    {/* Action bar */}
-                    <View style={[styles.actionBar, { borderBottomColor: borderColor }]}>
-                        <TouchableOpacity style={styles.actionBtn}>
-                            <Ionicons name="chatbubble-outline" size={22} color={subText} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionBtn} onPress={() => setShareVisible(true)}>
-                            <Ionicons name="repeat-outline" size={24} color={subText} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
-                            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                                <Ionicons
-                                    name={isLiked ? 'heart' : 'heart-outline'}
-                                    size={22}
-                                    color={isLiked ? '#E0245E' : subText}
-                                />
-                            </Animated.View>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionBtn} onPress={() => setShareVisible(true)}>
-                            <Ionicons name="share-outline" size={22} color={subText} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionBtn}>
-                            <Ionicons name="stats-chart-outline" size={20} color={subText} />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Comments section */}
-                    {comments.length > 0 ? (
-                        <View>
-                            {comments.map((comment: any, idx: number) => {
-                                const commentUser = comment.userId;
-                                const commentName = commentUser?.profile?.fullName
-                                    || commentUser?.recruiterProfile?.companyName
-                                    || 'User';
-                                const commentAvatar = commentUser?.avatar
-                                    || `https://ui-avatars.com/api/?name=${commentName.replace(/\s+/g, '+')}`;
-                                return (
-                                    <View key={idx} style={[styles.commentRow, { borderBottomColor: borderColor }]}>
-                                        <Image source={{ uri: commentAvatar }} style={styles.commentAvatar} />
-                                        <View style={{ flex: 1 }}>
-                                            <View style={styles.commentMeta}>
-                                                <Text style={[styles.commentName, { color: theme.text }]} numberOfLines={1}>
-                                                    {commentName}
-                                                </Text>
-                                                <Text style={[styles.commentTime, { color: subText }]}>
-                                                    · {formatRelative(comment.createdAt)}
-                                                </Text>
-                                            </View>
-                                            <Text style={[styles.commentText, { color: theme.text }]}>
-                                                {comment.text}
-                                            </Text>
+                            {/* Video Section */}
+                            {!!data.videoUrl && (
+                                <TouchableOpacity
+                                    activeOpacity={0.9}
+                                    style={[styles.videoThumb, { borderColor }]}
+                                    onPress={() => router.push({ pathname: '/screens/reels/[id]', params: { id: data._id } } as any)}
+                                >
+                                    <Image
+                                        source={{
+                                            uri: data.muxPlaybackId
+                                                ? `https://image.mux.com/${data.muxPlaybackId}/thumbnail.jpg`
+                                                : (data.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video')
+                                        }}
+                                        style={{ width: '100%', height: 220 }}
+                                        resizeMode="cover"
+                                    />
+                                    <View style={styles.playOverlay}>
+                                        <View style={styles.playCircle}>
+                                            <Ionicons name="play" size={28} color="white" style={{ marginLeft: 4 }} />
                                         </View>
                                     </View>
-                                );
-                            })}
+                                </TouchableOpacity>
+                            )}
                         </View>
-                    ) : (
-                        <View style={styles.emptyComments}>
-                            <Text style={[styles.emptyCommentsText, { color: subText }]}>
-                                No replies yet. Be the first to reply.
+
+                        {/* Timestamp Info */}
+                        <View style={[styles.timestampRow, { borderTopColor: borderColor, borderBottomColor: borderColor }]}>
+                            <Text style={[styles.timestampText, { color: subText }]}>
+                                {formatFullDate(data.createdAt)}
                             </Text>
                         </View>
-                    )}
 
-                    <View style={{ height: 80 }} />
-                </ScrollView>
+                        {/* Engagement Actions */}
+                        <View style={[styles.actionBar, { borderBottomColor: borderColor }]}>
+                            <TouchableOpacity style={styles.actionBtn} onPress={handleCommentPress}>
+                                <Ionicons name="chatbubble-outline" size={22} color={subText} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionBtn} onPress={() => setShareVisible(true)}>
+                                <Ionicons name="repeat-outline" size={24} color={subText} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
+                                <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                                    <Ionicons
+                                        name={isLiked ? 'heart' : 'heart-outline'}
+                                        size={22}
+                                        color={isLiked ? '#E0245E' : subText}
+                                    />
+                                </Animated.View>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionBtn} onPress={() => setShareVisible(true)}>
+                                <Ionicons name="share-outline" size={22} color={subText} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Comments List */}
+                        {comments.length > 0 ? (
+                            <View>
+                                {comments.map((comment: any, idx: number) => {
+                                    const commentUser = comment.userId;
+                                    const commentName = commentUser?.profile?.fullName || 'User';
+                                    const commentAvatar = commentUser?.avatar || `https://ui-avatars.com/api/?name=${commentName.replace(/\s+/g, '+')}`;
+                                    return (
+                                        <View key={idx} style={[styles.commentRow, { borderBottomColor: borderColor }]}>
+                                            <Image source={{ uri: commentAvatar }} style={styles.commentAvatar} />
+                                            <View style={{ flex: 1 }}>
+                                                <View style={styles.commentMeta}>
+                                                    <Text style={[styles.commentName, { color: theme.text }]} numberOfLines={1}>
+                                                        {commentName}
+                                                    </Text>
+                                                    <Text style={[styles.commentTime, { color: subText }]}>
+                                                        · {formatRelative(comment.createdAt)}
+                                                    </Text>
+                                                </View>
+                                                <Text style={[styles.commentText, { color: theme.text }]}>
+                                                    {comment.text}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        ) : (
+                            <View style={styles.emptyComments}>
+                                <Text style={[styles.emptyCommentsText, { color: subText }]}>
+                                    No replies yet. Be the first to reply.
+                                </Text>
+                            </View>
+                        )}
+                    </ScrollView>
+
+                    {/* Bottom Reply Input */}
+                    <View style={[styles.bottomInputContainer, { backgroundColor: theme.background, borderTopColor: borderColor }]}>
+                        <Image source={{ uri: currentUser?.avatar }} style={styles.smallAvatar} />
+                        <TextInput
+                            ref={commentInputRef}
+                            style={[styles.input, { color: theme.text, backgroundColor: isDark ? '#16181c' : '#f0f2f5' }]}
+                            placeholder="Post your reply"
+                            placeholderTextColor={subText}
+                            value={commentText}
+                            onChangeText={setCommentText}
+                            multiline
+                        />
+                        <TouchableOpacity
+                            onPress={submitComment}
+                            disabled={!commentText.trim() || isSubmittingComment}
+                            style={styles.sendBtn}
+                        >
+                            <Text style={[styles.sendText, { opacity: commentText.trim() ? 1 : 0.5 }]}>Reply</Text>
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
             )}
 
             <ShareRepostModal
@@ -394,35 +430,28 @@ const styles = StyleSheet.create({
     root: { flex: 1 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     emptyText: { fontFamily: 'Outfit-Regular', fontSize: 15 },
-
-    // Header
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: wp(4),
         paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
         gap: 20,
     },
     backBtn: { padding: 2 },
     headerTitle: { fontFamily: 'Outfit-Bold', fontSize: 20 },
-
-    // Reshare label strip
     reshareLabel: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingHorizontal: wp(14), // Aligns with text, not avatar
+        paddingTop: 8,
         gap: 6,
-        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     reshareLabelText: { fontFamily: 'Outfit-Medium', fontSize: 13 },
-
-    // Author
     authorRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        paddingHorizontal: 16,
+        paddingHorizontal: wp(4),
         paddingTop: 14,
         paddingBottom: 4,
         gap: 12,
@@ -431,12 +460,8 @@ const styles = StyleSheet.create({
     displayName: { fontFamily: 'Outfit-Bold', fontSize: 16 },
     handle: { fontFamily: 'Outfit-Regular', fontSize: 14, marginTop: 1 },
     moreBtn: { padding: 4, marginTop: 2 },
-
-    // Content
-    contentBlock: { paddingHorizontal: 16, paddingTop: 12, gap: 12 },
+    contentBlock: { paddingHorizontal: wp(4), paddingTop: 12, gap: 12 },
     postText: { fontFamily: 'Outfit-Light', fontSize: 18, lineHeight: 26 },
-
-    // Images grid
     imagesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -445,8 +470,6 @@ const styles = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
     },
     gridImage: {},
-
-    // Video thumbnail
     videoThumb: {
         borderRadius: 14,
         overflow: 'hidden',
@@ -468,12 +491,11 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: 'rgba(255,255,255,0.3)',
     },
-
-    // Quote / reshare card
     quoteCard: {
         borderRadius: 14,
         borderWidth: StyleSheet.hairlineWidth,
         overflow: 'hidden',
+        marginTop: 4,
     },
     quoteHeader: {
         flexDirection: 'row',
@@ -486,8 +508,6 @@ const styles = StyleSheet.create({
     quoteAvatar: { width: 22, height: 22, borderRadius: 11 },
     quoteDisplayName: { fontFamily: 'Outfit-Bold', fontSize: 13, flexShrink: 1 },
     quoteTime: { fontFamily: 'Outfit-Regular', fontSize: 12 },
-    originalBadge: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
-    originalBadgeText: { fontFamily: 'Outfit-Medium', fontSize: 10 },
     quoteContent: {
         fontFamily: 'Outfit-Regular',
         fontSize: 14,
@@ -495,35 +515,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingBottom: 10,
     },
-    quoteImagesRow: {
-        flexDirection: 'row',
-        borderTopWidth: StyleSheet.hairlineWidth,
+    parentImagesRow: { position: 'relative' },
+    parentImageCount: {
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
     },
-    quoteImage: { flex: 1, height: 120 },
-
-    // Timestamp
+    parentImageCountText: { color: 'white', fontSize: 10, fontFamily: 'Outfit-Bold' },
     timestampRow: {
-        paddingHorizontal: 16,
+        paddingHorizontal: wp(4),
         paddingVertical: 12,
         marginTop: 12,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
     timestampText: { fontFamily: 'Outfit-Regular', fontSize: 14 },
-
-    // Counts
-    countsRow: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 20,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-    },
-    countItem: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-    countNum: { fontFamily: 'Outfit-Bold', fontSize: 15 },
-    countLabel: { fontFamily: 'Outfit-Regular', fontSize: 14 },
-
-    // Action bar
     actionBar: {
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -531,12 +541,10 @@ const styles = StyleSheet.create({
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
     actionBtn: { padding: 10 },
-
-    // Comments
     commentRow: {
         flexDirection: 'row',
         gap: 10,
-        paddingHorizontal: 16,
+        paddingHorizontal: wp(4),
         paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
@@ -545,7 +553,26 @@ const styles = StyleSheet.create({
     commentName: { fontFamily: 'Outfit-Bold', fontSize: 14, flexShrink: 1 },
     commentTime: { fontFamily: 'Outfit-Regular', fontSize: 12 },
     commentText: { fontFamily: 'Outfit-Regular', fontSize: 14, lineHeight: 20 },
-
     emptyComments: { paddingVertical: 32, alignItems: 'center' },
     emptyCommentsText: { fontFamily: 'Outfit-Regular', fontSize: 14 },
+    bottomInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: wp(4),
+        paddingVertical: 10,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        gap: 10,
+    },
+    smallAvatar: { width: 32, height: 32, borderRadius: 16 },
+    input: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        fontFamily: 'Outfit-Regular',
+        fontSize: 15,
+        maxHeight: 100,
+    },
+    sendBtn: { paddingHorizontal: 12 },
+    sendText: { color: '#006400', fontFamily: 'Outfit-Bold', fontSize: 15 },
 });

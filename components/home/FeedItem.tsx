@@ -51,7 +51,7 @@ interface FeedItemProps {
     item?: {
         id: number | string;
         type: 'job' | 'post' | 'reel' | 'candidate';
-        userId?: string; // ID for navigation
+        userId?: string;
         user: string;
         handle: string;
         avatar: string;
@@ -91,7 +91,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
 
-    // State for local interaction
     const [isLiked, setIsLiked] = useState(item?.isLiked || false);
     const [likeCount, setLikeCount] = useState(() => {
         if (!item) return 0;
@@ -99,9 +98,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
         return (parseInt(likes.replace(/[^0-9.]/g, '')) || 0);
     });
     const [shareVisible, setShareVisible] = useState(false);
-    const [isCommenting, setIsCommenting] = useState(false);
-    const [commentText, setCommentText] = useState('');
-    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     if (loading || !item) {
@@ -168,11 +164,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
         setShareVisible(!shareVisible);
     };
 
-    const handleCommentSubmit = () => {
-        // Disabled per user request: "should not be able to comment on a post via the feedItem"
-        router.push(`/screens/feed/${item.id}`);
-    };
-
     const handlePress = () => {
         router.push(`/screens/feed/${item.id}`);
     };
@@ -197,7 +188,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                 >
                     <Image
                         source={{ uri: attachment.type === 'video' ? attachment.thumbnail : attachment.url }}
-                        style={{ width: '100%', height: 200 }}
+                        style={{ width: '100%', height: hp('25%') }}
                         resizeMode="cover"
                     />
                     {attachment.type === 'video' && (
@@ -220,7 +211,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                         onPress={att.type === 'video' ? handleVideoPress : handlePress}
                         style={{
                             width: attachments.length === 2 ? '50%' : (attachments.length >= 3 && index < 2 ? '50%' : '100%'),
-                            height: attachments.length === 2 ? 200 : (attachments.length >= 3 && index < 2 ? 150 : 150),
+                            height: attachments.length === 2 ? hp('20%') : (attachments.length >= 3 && index < 2 ? hp('18%') : hp('18%')),
                             borderWidth: 0.5,
                             borderColor: isDark ? '#2f3336' : '#eff3f4'
                         }}
@@ -248,7 +239,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
             <View className="flex-row px-4 py-4">
                 <TouchableOpacity onPress={() => router.push(`/screens/profile/${item.userId || item.user}` as any)}>
                     <View className="mr-3">
-                        <Image source={{ uri: item.avatar }} className="w-12 h-12 rounded-full" />
+                        <Image source={{ uri: item.avatar }} style={{ width: wp('12%'), height: wp('12%'), borderRadius: wp('6%') }} />
                     </View>
                 </TouchableOpacity>
 
@@ -265,7 +256,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                         </TouchableOpacity>
                     </View>
 
-                    {/* Reshared label */}
                     {item.parentPost && (
                         <View className="flex-row items-center mb-2" style={{ gap: 4 }}>
                             <Ionicons name="repeat" size={13} color="#71717a" />
@@ -275,7 +265,12 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                         </View>
                     )}
 
-                    <Text className="text-[15px] mb-3" style={{ fontFamily: 'Outfit-Light', color: theme.text, lineHeight: 22 }}>
+                    <Text
+                        numberOfLines={5}
+                        ellipsizeMode="tail"
+                        className="text-[15px] mb-3"
+                        style={{ fontFamily: 'Outfit-Light', color: theme.text, lineHeight: 22 }}
+                    >
                         {item.content}
                     </Text>
 
@@ -291,7 +286,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                                 backgroundColor: isDark ? '#16181c' : '#f8fafc'
                             }}
                         >
-                            {/* Original author header */}
                             <View className="flex-row items-center px-3 pt-3 pb-2">
                                 <Image
                                     source={{ uri: item.parentPost.avatar || `https://ui-avatars.com/api/?name=${item.parentPost.user}` }}
@@ -304,13 +298,15 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                                     <Text style={{ fontFamily: 'Outfit-Medium', fontSize: 10, color: '#71717a' }}>Original</Text>
                                 </View>
                             </View>
-                            {/* Original content */}
                             {!!item.parentPost.content && (
-                                <Text style={{ fontFamily: 'Outfit-Regular', color: theme.text, fontSize: 13, lineHeight: 19, paddingHorizontal: 12, paddingBottom: item.parentPost.attachments?.length ? 8 : 12 }}>
+                                <Text
+                                    numberOfLines={5}
+                                    ellipsizeMode="tail"
+                                    style={{ fontFamily: 'Outfit-Regular', color: theme.text, fontSize: 13, lineHeight: 19, paddingHorizontal: 12, paddingBottom: item.parentPost.attachments?.length ? 8 : 12 }}
+                                >
                                     {item.parentPost.content}
                                 </Text>
                             )}
-                            {/* Original images */}
                             {(() => {
                                 const atts = item.parentPost.attachments;
                                 if (!atts || atts.length === 0) return null;
@@ -326,7 +322,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                                                 source={{ uri }}
                                                 style={{
                                                     flex: 1,
-                                                    height: 120,
+                                                    height: hp('15%'),
                                                     borderLeftWidth: idx > 0 ? 1 : 0,
                                                     borderColor: isDark ? '#2f3336' : '#e2e8f0'
                                                 }}
@@ -353,7 +349,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                         </TouchableOpacity>
                     )}
 
-                    {/* Interaction Bar */}
                     <View className="flex-row justify-between pr-8 mt-1">
                         <TouchableOpacity onPress={handlePress} className="flex-row items-center">
                             <Ionicons name="chatbubble-outline" size={18} color="#71717a" />
@@ -376,8 +371,6 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                             <Ionicons name="share-outline" size={18} color="#71717a" />
                         </TouchableOpacity>
                     </View>
-
-                    {/* Comment Input Disabled per user request */}
                 </View>
             </View>
 
