@@ -13,6 +13,7 @@ import {
     Image,
     ActivityIndicator,
     RefreshControl,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
@@ -54,20 +55,56 @@ export default function RecruitersJobs() {
         loadJobs();
     };
 
+    const handleDeleteJob = (id: string, title: string) => {
+        Alert.alert(
+            "Delete Job",
+            `Are you sure you want to delete "${title}"?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Delete", 
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const res = await jobsApi.delete(id);
+                            if (res.success) {
+                                setMyJobs(prev => prev.filter(j => j._id !== id));
+                            }
+                        } catch (e) {
+                            console.error("Failed to delete job", e);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const activePostingsCount = myJobs.filter(j => j.status === 'open').length;
     const totalApplicantsCount = myJobs.reduce((acc, curr) => acc + (curr.applicantsCount || 0), 0);
 
     const renderJobItem = (job: Job) => (
-        <TouchableOpacity
-            key={job._id}
-            activeOpacity={0.7}
-            style={[styles.jobCard, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}
-            onPress={() => router.push(`/screens/jobs/${job._id}` as any)}
-        >
-            <View style={styles.jobInfo}>
-                <Text style={[styles.jobTitle, { color: theme.text }]}>{job.title}</Text>
-                <Text style={styles.companyInfo}>{job.companyName} • {job.location}</Text>
-                <View style={styles.statusRow}>
+        <View key={job._id} style={[styles.jobCard, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}>
+            <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.jobInfo}
+                onPress={() => router.push(`/screens/jobs/${job._id}` as any)}
+            >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.jobTitle, { color: theme.text }]}>{job.title}</Text>
+                        <Text style={styles.companyInfo}>{job.companyName} • {job.location}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity onPress={() => router.push({ pathname: '/screens/(recruiters)/post', params: { id: job._id } } as any)} style={{ padding: 4 }}>
+                            <Ionicons name="pencil" size={20} color={theme.brand} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteJob(job._id, job.title)} style={{ padding: 4 }}>
+                            <Ionicons name="trash" size={20} color="#ef4444" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={[styles.statusRow, { marginTop: 8 }]}>
                     <View style={[styles.statusBadge, { backgroundColor: job.status === 'open' ? 'rgba(132, 204, 22, 0.1)' : 'rgba(113, 113, 122, 0.1)' }]}>
                         <Text style={[styles.statusText, { color: job.status === 'open' ? theme.brand : '#71717a' }]}>
                             {job.status === 'open' ? 'Active' : 'Closed'}
@@ -76,15 +113,19 @@ export default function RecruitersJobs() {
                     <Text style={styles.dateText}>Posted {formatRelative(job.createdAt)}</Text>
                 </View>
 
-                <View style={styles.metricsRow}>
-                    <View style={styles.metric}>
-                        <Text style={[styles.metricValue, { color: theme.text }]}>{job.applicantsCount || 0}</Text>
-                        <Text style={styles.metricLabel}>Applicants</Text>
-                    </View>
+                <View style={[styles.metricsRow, { marginTop: 12 }]}>
+                    <TouchableOpacity 
+                        style={styles.metric} 
+                        onPress={() => router.push(`/screens/(recruiters)/applicants/${job._id}` as any)}
+                        activeOpacity={0.6}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Text style={[styles.metricValue, { color: theme.brand, textDecorationLine: 'underline' }]}>{job.applicantsCount || 0}</Text>
+                        <Text style={[styles.metricLabel, { color: theme.brand }]}>Applicants</Text>
+                    </TouchableOpacity>
                 </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#71717a" />
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </View>
     );
 
     if (isLoading && !refreshing) {

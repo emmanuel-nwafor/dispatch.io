@@ -262,6 +262,11 @@ export const user = {
         return request<{ success: boolean; following: any[] }>(`/users/${id}/following`, {
             method: 'GET',
         });
+    },
+    getSuggestions: () => {
+        return request<{ success: boolean; data: any[] }>('/users/suggestions', {
+            method: 'GET',
+        });
     }
 };
 
@@ -292,6 +297,11 @@ export const jobs = {
     delete: (id: string) => {
         return request<{ success: boolean }>(`/jobs/${id}`, {
             method: 'DELETE',
+        });
+    },
+    getApplicants: (jobId: string) => {
+        return request<{ success: boolean; data: any[] }>(`/jobs/${jobId}/applicants`, {
+            method: 'GET',
         });
     }
 };

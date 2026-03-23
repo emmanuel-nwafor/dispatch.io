@@ -1,8 +1,8 @@
 import { Colors } from '@/app/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ScrollView,
     View,
@@ -23,6 +23,8 @@ import { useUserStore } from '@/hooks/useUserStore';
 
 export default function RecruitersPost() {
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const { id } = params;
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
@@ -36,6 +38,32 @@ export default function RecruitersPost() {
     const [description, setDescription] = useState('');
     const [skills, setSkills] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingJob, setIsLoadingJob] = useState(false);
+
+    useEffect(() => {
+        if (id) {
+            fetchJobDetails();
+        }
+    }, [id]);
+
+    const fetchJobDetails = async () => {
+        setIsLoadingJob(true);
+        try {
+            const res = await jobsApi.getById(id as string);
+            if (res.success && res.job) {
+                const job = res.job;
+                setTitle(job.title);
+                setJobType(job.jobType || 'Remote');
+                setDescription(job.description);
+                setSkills(job.skillsRequired?.join(', ') || '');
+            }
+        } catch (error) {
+            console.error("Failed to load job details:", error);
+            Alert.alert("Error", "Failed to load job details.");
+        } finally {
+            setIsLoadingJob(false);
+        }
+    };
 
     const handlePostJob = async () => {
         if (!title.trim() || !description.trim()) {
@@ -56,14 +84,20 @@ export default function RecruitersPost() {
                 status: 'open'
             };
 
-            const res = await jobsApi.create(payload);
+            let res;
+            if (id) {
+                res = await jobsApi.update(id as string, payload);
+            } else {
+                res = await jobsApi.create(payload);
+            }
+
             if (res.success) {
-                Alert.alert("Success", "Job posted successfully!");
+                Alert.alert("Success", id ? "Job updated successfully!" : "Job posted successfully!");
                 router.back();
             }
         } catch (error) {
-            console.error("Failed to post job:", error);
-            Alert.alert("Error", "Failed to post job. Please try again.");
+            console.error("Failed to save job:", error);
+            Alert.alert("Error", "Failed to save job. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -75,7 +109,7 @@ export default function RecruitersPost() {
                 <Ionicons name="arrow-back" size={24} color={theme.text} />
             </TouchableOpacity>
             <View style={styles.headerTitleContainer}>
-                <Text style={[styles.headerTitle, { color: theme.text }]}>Post a job</Text>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>{id ? "Edit job" : "Post a job"}</Text>
                 <Text style={styles.headerSubtitle}>Step {step} of {totalSteps}</Text>
             </View>
             <TouchableOpacity onPress={() => router.back()}>
@@ -220,27 +254,35 @@ export default function RecruitersPost() {
                 {renderHeader()}
                 {renderProgressBar()}
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                    {step === 1 && renderStep1()}
-                    {step === 2 && renderStep2()}
-                    {step === 3 && renderStep3()}
-                </ScrollView>
+                {isLoadingJob ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={theme.brand} />
+                    </View>
+                ) : (
+                    <>
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                            {step === 1 && renderStep1()}
+                            {step === 2 && renderStep2()}
+                            {step === 3 && renderStep3()}
+                        </ScrollView>
 
-                <View style={[styles.footer, { borderTopColor: isDark ? '#27272a' : '#f4f4f5' }]}>
-                    <TouchableOpacity
-                        style={[styles.nextButton, { backgroundColor: theme.brand }]}
-                        disabled={isSubmitting}
-                        onPress={() => step < totalSteps ? setStep(step + 1) : handlePostJob()}
-                    >
-                        {isSubmitting ? (
-                            <ActivityIndicator color="#000" />
-                        ) : (
-                            <Text style={styles.nextButtonText}>
-                                {step === totalSteps ? 'Post job' : 'Next'}
-                            </Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
+                        <View style={[styles.footer, { borderTopColor: isDark ? '#27272a' : '#f4f4f5' }]}>
+                            <TouchableOpacity
+                                style={[styles.nextButton, { backgroundColor: theme.brand }]}
+                                disabled={isSubmitting}
+                                onPress={() => step < totalSteps ? setStep(step + 1) : handlePostJob()}
+                            >
+                                {isSubmitting ? (
+                                    <ActivityIndicator color="#000" />
+                                ) : (
+                                    <Text style={styles.nextButtonText}>
+                                        {step === totalSteps ? (id ? 'Update job' : 'Post job') : 'Next'}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                )}
             </SafeAreaView>
         </KeyboardAvoidingView>
     );

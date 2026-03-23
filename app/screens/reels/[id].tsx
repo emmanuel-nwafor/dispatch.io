@@ -9,7 +9,9 @@ import {
     StyleSheet,
     Image,
     Platform,
-    StatusBar
+    StatusBar,
+    RefreshControl,
+    ScrollView // Added ScrollView for long text containment
 } from 'react-native';
 import { router, useLocalSearchParams, useRouter } from 'expo-router';
 import { Video, ResizeMode, AVPlaybackStatus, Audio } from 'expo-av';
@@ -21,8 +23,8 @@ import CommentsModal from '@/components/modals/CommentsModal';
 import { LinearGradient } from 'expo-linear-gradient';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import * as Haptics from 'expo-haptics';
+import { MotiView } from 'moti';
 
-// Use 'screen' instead of 'window' to get the absolute height including nav bars
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('screen');
 
 // --- Sub-Component: ReelPlayer ---
@@ -35,9 +37,12 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
     const [comments, setComments] = useState<any[]>(item.comments || []);
     const [userId, setUserId] = useState<string | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
-    
+
+    // "See More" state
+    const [showFullDescription, setShowFullDescription] = useState(false);
+
     const { user: currentUser } = useUserStore();
-    
+
     useEffect(() => {
         if (currentUser && item.creatorId?._id) {
             setIsFollowing(currentUser.following?.includes(item.creatorId._id));
@@ -76,6 +81,7 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
         } else {
             videoRef.current?.pauseAsync();
             videoRef.current?.setPositionAsync(0);
+            setShowFullDescription(false);
         }
     }, [isVisible]);
 
@@ -98,7 +104,6 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
             await reelsApi.like(item._id);
         } catch (error) {
             console.error('Like error', error);
-            // Rollback on error
             setIsLiked(!isLiked);
             setLikeCount((prev: number) => isLiked ? prev + 1 : prev - 1);
         }
@@ -134,6 +139,8 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
         return 0;
     };
 
+    const descriptionText = item.description || item.title || item.content || "";
+
     return (
         <View style={styles.reelContainer}>
             <TouchableOpacity
@@ -145,14 +152,13 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
                     ref={videoRef}
                     source={{ uri: item.videoUrl || item.attachments?.[0]?.url }}
                     style={StyleSheet.absoluteFill}
-                    // ResizeMode.COVER is key to filling the screen perfectly
                     resizeMode={ResizeMode.COVER}
                     isLooping
                     onPlaybackStatusUpdate={setStatus}
                 />
 
                 <LinearGradient
-                    colors={['rgba(0,0,0,0.4)', 'transparent', 'transparent', 'rgba(0,0,0,0.7)']}
+                    colors={['rgba(0,0,0,0.3)', 'transparent', 'transparent', 'rgba(0,0,0,0.8)']}
                     style={StyleSheet.absoluteFill}
                 />
 
@@ -175,8 +181,8 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
                             style={styles.avatar}
                         />
                         {!isFollowing && item.creatorId?._id !== currentUser?._id && (
-                            <TouchableOpacity 
-                                style={styles.plusIcon} 
+                            <TouchableOpacity
+                                style={styles.plusIcon}
                                 onPress={(e) => {
                                     e.stopPropagation();
                                     handleFollow();
@@ -188,11 +194,22 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-                        <Ionicons
-                            name={isLiked ? "heart" : "heart-outline"}
-                            size={wp('8.5%')}
-                            color={isLiked ? "#FF2D55" : "white"}
-                        />
+                        <MotiView
+                            animate={{
+                                scale: isLiked ? [1, 1.4, 1] : 1,
+                            }}
+                            transition={{
+                                type: 'spring',
+                                damping: 12,
+                                stiffness: 200,
+                            }}
+                        >
+                            <Ionicons
+                                name={isLiked ? "heart" : "heart-outline"}
+                                size={wp('8.5%')}
+                                color={isLiked ? "#FF2D55" : "white"}
+                            />
+                        </MotiView>
                         <Text style={styles.actionText}>{likeCount}</Text>
                     </TouchableOpacity>
 
@@ -210,17 +227,44 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Content */}
+                {/* Content Area */}
                 <View style={styles.bottomInfo}>
                     <Text style={styles.username}>
                         @{item.user || item.creatorId?.profile?.fullName || 'User'}
                     </Text>
-                    <Text style={styles.description} numberOfLines={2}>
-                        {item.description || item.title || item.content}
-                    </Text>
+
+                    <View style={styles.descriptionWrapper}>
+                        <ScrollView
+                            style={[
+                                styles.descriptionScroll,
+                                { maxHeight: showFullDescription ? hp('30%') : hp('6%') }
+                            ]}
+                            showsVerticalScrollIndicator={false}
+                            scrollEnabled={showFullDescription}
+                        >
+                            <Text
+                                style={styles.description}
+                                numberOfLines={showFullDescription ? undefined : 2}
+                            >
+                                {descriptionText}
+                            </Text>
+                        </ScrollView>
+
+                        {descriptionText.length > 60 && (
+                            <TouchableOpacity
+                                onPress={() => setShowFullDescription(!showFullDescription)}
+                                style={styles.seeMoreTouchable}
+                            >
+                                <Text style={styles.seeMoreBtn}>
+                                    {showFullDescription ? 'See Less' : '...See More'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     <View style={styles.audioContainer}>
                         <Ionicons name="musical-notes" size={14} color="white" />
-                        <Text style={styles.audioText}>Original Audio • {item.user || 'Unknown'}</Text>
+                        <Text style={styles.audioText}>Original Audio • {item.user || item.creatorId?.profile?.fullName || 'User'}</Text>
                     </View>
                 </View>
 
@@ -249,20 +293,22 @@ export default function ReelsScreen() {
     const [reels, setReels] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [activeViewableItem, setActiveViewableItem] = useState<string | null>(null);
 
-    const fetchReels = async (pageNum = 1) => {
+    const fetchReels = async (pageNum = 1, isRefresh = false) => {
         try {
-            if (pageNum === 1) setLoading(true);
+            if (isRefresh) setIsRefreshing(true);
+            else if (pageNum === 1) setLoading(true);
             else setLoadingMore(true);
 
             const res = await feeds.getReels(pageNum, 10);
             let newReels = res.data;
 
             if (pageNum === 1) {
-                if (id) {
+                if (id && !isRefresh) {
                     const exists = newReels.find((r: any) => r._id === id);
                     if (!exists) {
                         const singleRes = await feeds.getFeedItem(id as string);
@@ -283,10 +329,15 @@ export default function ReelsScreen() {
         } finally {
             setLoading(false);
             setLoadingMore(false);
+            setIsRefreshing(false);
         }
     };
 
     useEffect(() => { fetchReels(1); }, [id]);
+
+    const onRefresh = () => {
+        fetchReels(1, true);
+    };
 
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) {
@@ -328,10 +379,17 @@ export default function ReelsScreen() {
                 initialNumToRender={2}
                 maxToRenderPerBatch={3}
                 windowSize={5}
-                // Important: Match the FlatList height to the screen height
                 snapToInterval={SCREEN_HEIGHT}
                 snapToAlignment="start"
                 decelerationRate="fast"
+                refreshControl={
+                    <RefreshControl
+                        refreshing={isRefreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#fff"
+                        colors={["#006400"]}
+                    />
+                }
                 ListFooterComponent={() => loadingMore ? <ActivityIndicator color="#006400" style={{ marginVertical: 20 }} /> : null}
             />
         </View>
@@ -382,7 +440,7 @@ const styles = StyleSheet.create({
     rightSidebar: {
         position: 'absolute',
         right: wp('4%'),
-        bottom: hp('12%'),
+        bottom: hp('10%'),
         alignItems: 'center',
     },
     profileContainer: {
@@ -421,7 +479,7 @@ const styles = StyleSheet.create({
     },
     bottomInfo: {
         position: 'absolute',
-        bottom: hp('6%'),
+        bottom: hp('4%'),
         left: wp('4%'),
         right: wp('22%'),
     },
@@ -431,11 +489,26 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit-Bold',
         marginBottom: 4
     },
+    descriptionWrapper: {
+        width: '100%',
+    },
+    descriptionScroll: {
+        width: '100%',
+    },
     description: {
         color: 'white',
         fontSize: wp('3.6%'),
         fontFamily: 'Outfit-Regular',
         lineHeight: 20
+    },
+    seeMoreTouchable: {
+        alignSelf: 'flex-start',
+    },
+    seeMoreBtn: {
+        color: '#ccc',
+        fontFamily: 'Outfit-Bold',
+        fontSize: wp('3.4%'),
+        marginTop: 2
     },
     audioContainer: {
         flexDirection: 'row',

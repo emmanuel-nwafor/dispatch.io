@@ -338,13 +338,15 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                     {renderAttachments()}
 
                     {item.type === 'job' && (
-                        <TouchableOpacity onPress={onApply} className="rounded-2xl border mb-3 overflow-hidden" style={{ borderColor: isDark ? '#2f3336' : '#cfd9de' }}>
-                            <View className="p-3" style={{ backgroundColor: isDark ? '#1a1a1a' : '#f8fafc' }}>
-                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text }}>{item.jobRole}</Text>
-                                <Text className="text-zinc-500 text-xs" style={{ fontFamily: 'Outfit-Medium' }}>{item.salary} • {item.location || 'Remote'}</Text>
-                                <View className="mt-2 bg-zinc-500/10 self-start px-3 py-1 rounded-full">
-                                    <Text style={{ fontSize: 10, color: theme.brand, fontFamily: 'Outfit-Bold' }}>APPLY NOW</Text>
-                                </View>
+                        <TouchableOpacity onPress={onApply} className="rounded-2xl border mb-3 overflow-hidden p-4 flex-row items-center" style={{ borderColor: isDark ? '#2f3336' : '#cfd9de', backgroundColor: isDark ? '#1a1a1a' : '#f8fafc' }}>
+                            <Image source={{ uri: item.avatar }} style={{ width: 48, height: 48, borderRadius: 8, marginRight: 12, borderWidth: 1, borderColor: isDark ? '#2f3336' : '#e2e8f0' }} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 16 }}>{item.jobRole}</Text>
+                                <Text className="text-zinc-500 text-xs mt-1" style={{ fontFamily: 'Outfit-Medium' }}>{item.user} • {item.location || 'Remote'}</Text>
+                                <Text className="text-zinc-500 text-xs mt-1" style={{ fontFamily: 'Outfit-Medium' }}>{item.salary}</Text>
+                            </View>
+                            <View className="bg-zinc-500/10 px-3 py-1.5 rounded-full ml-2">
+                                <Text style={{ fontSize: 10, color: theme.brand, fontFamily: 'Outfit-Bold' }}>APPLY</Text>
                             </View>
                         </TouchableOpacity>
                     )}

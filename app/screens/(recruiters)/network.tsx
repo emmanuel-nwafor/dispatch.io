@@ -2,7 +2,7 @@ import { Colors } from '@/app/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ScrollView,
     View,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { user as userApi } from '@/app/data/api';
 
 interface Candidate {
     id: string;
@@ -33,6 +34,32 @@ export default function RecruitersNetwork() {
 
     const [invitations, setInvitations] = useState<any[]>([]);
     const [suggestions, setSuggestions] = useState<Candidate[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        loadSuggestions();
+    }, []);
+
+    const loadSuggestions = async () => {
+        try {
+            const res = await userApi.getSuggestions();
+            if (res.success && res.data) {
+                const formatted = res.data.map(u => ({
+                    id: u._id,
+                    name: u.profile?.fullName || 'User Name',
+                    role: u.profile?.bio || 'Professional',
+                    location: u.profile?.location || 'Global',
+                    avatar: u.avatar || `https://i.pravatar.cc/150?u=${u._id}`,
+                    mutualConnections: Math.floor(Math.random() * 20), // pseudo-mock as standard for now
+                }));
+                setSuggestions(formatted);
+            }
+        } catch (error) {
+            console.error("Failed to load suggestions:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const renderInvitation = ({ item }: { item: any }) => (
         <View style={[styles.invitationCard, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}>
@@ -53,10 +80,14 @@ export default function RecruitersNetwork() {
     );
 
     const renderSuggestion = ({ item }: { item: Candidate }) => (
-        <View style={[styles.suggestionCard, {
-            backgroundColor: isDark ? '#111111' : '#fff',
-            borderColor: isDark ? '#27272a' : '#f4f4f5'
-        }]}>
+        <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => router.push(`/screens/profile/${item.id}` as any)}
+            style={[styles.suggestionCard, {
+                backgroundColor: isDark ? '#111111' : '#fff',
+                borderColor: isDark ? '#27272a' : '#f4f4f5'
+            }]}
+        >
             <View style={styles.suggestionHeader}>
                 <Image source={{ uri: item.avatar }} style={styles.suggestedAvatar} />
                 <TouchableOpacity style={styles.dismissButton}>
@@ -68,10 +99,12 @@ export default function RecruitersNetwork() {
                 <Text style={styles.suggestionRole} numberOfLines={2}>{item.role}</Text>
                 <Text style={styles.mutualText}>{item.mutualConnections} mutual connections</Text>
             </View>
-            <TouchableOpacity style={[styles.connectButton, { borderColor: theme.brand }]}>
+            <TouchableOpacity 
+                style={[styles.connectButton, { borderColor: theme.brand }]}
+            >
                 <Text style={[styles.connectText, { color: theme.brand }]}>Connect</Text>
             </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
     );
 
     return (
