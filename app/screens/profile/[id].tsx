@@ -54,24 +54,60 @@ export default function ProfileDetailsScreen() {
     const [followerCount, setFollowerCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
 
+    const formatRelative = (dateStr: string) => {
+        if (!dateStr) return 'now';
+        const now = new Date();
+        const past = new Date(dateStr);
+        const mins = Math.floor((now.getTime() - past.getTime()) / 60000);
+        if (mins < 60) return `${mins}m`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h`;
+        return `${Math.floor(hours / 24)}d`;
+    };
+
     const transformPostData = (items: any[]): FeedItemData[] => {
-        return items.map(item => ({
-            id: item._id,
-            userId: item.creatorId?._id || item.creatorId,
-            type: item.videoUrl ? 'reel' : 'post',
-            user: item.creatorId?.profile?.fullName || item.creatorId?.recruiterProfile?.companyName || 'User',
-            handle: `@${(item.creatorId?.username || 'user')}`,
-            avatar: item.creatorId?.avatar || `https://ui-avatars.com/api/?name=${(item.creatorId?.profile?.fullName || 'User').replace(/\s+/g, '+')}`,
-            time: '2h',
-            content: item.content || item.description || '',
-            isLiked: item.likes?.includes(currentUser?._id),
-            stats: {
-                comments: String(item.comments?.length || 0),
-                reposts: String(item.resharesCount || 0),
-                likes: String(item.likes?.length || 0)
-            },
-            attachments: item.images?.map((img: string) => ({ type: 'image', url: img })) || []
-        }));
+        return items.map(item => {
+            const creatorName = item.creatorId?.profile?.fullName
+                || item.creatorId?.recruiterProfile?.companyName
+                || 'User';
+            const parentPost = item.parentPostId;
+            const parentCreatorName = parentPost?.creatorId?.profile?.fullName
+                || parentPost?.creatorId?.recruiterProfile?.companyName
+                || 'User';
+
+            return {
+                id: item._id,
+                userId: item.creatorId?._id || item.creatorId,
+                type: (item.videoUrl ? 'reel' : 'post') as any,
+                user: creatorName,
+                handle: `@${(item.creatorId?.username || creatorName.replace(/\s+/g, '').toLowerCase())}`,
+                avatar: item.creatorId?.avatar || `https://ui-avatars.com/api/?name=${creatorName.replace(/\s+/g, '+')}`,
+                time: formatRelative(item.createdAt),
+                content: item.content || item.description || '',
+                isLiked: item.likes?.includes(currentUser?._id),
+                stats: {
+                    comments: String(item.comments?.length || 0),
+                    reposts: String(item.reshares?.length || item.resharesCount || 0),
+                    likes: String(item.likes?.length || 0)
+                },
+                parentPost: parentPost ? {
+                    user: parentCreatorName,
+                    avatar: parentPost.creatorId?.avatar || `https://ui-avatars.com/api/?name=${parentCreatorName.replace(/\s+/g, '+')}`,
+                    content: parentPost.content || '',
+                    attachments: (parentPost.images || []).map((url: string) => ({ type: 'image' as const, url })),
+                } : undefined,
+                attachments: [
+                    ...(item.images || []).map((img: string) => ({ type: 'image' as const, url: img })),
+                    ...(item.videoUrl ? [{
+                        type: 'video' as const,
+                        url: item.videoUrl,
+                        thumbnail: item.muxPlaybackId
+                            ? `https://image.mux.com/${item.muxPlaybackId}/thumbnail.jpg`
+                            : (item.thumbnailUrl || 'https://via.placeholder.com/400x225.png?text=Video')
+                    }] : [])
+                ]
+            };
+        });
     };
 
     const fetchUser = async (isRefreshing = false) => {

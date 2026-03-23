@@ -95,8 +95,9 @@ export default function UsersHomeScreen() {
                         },
                         parentPost: item.parentPostId ? {
                             user: item.parentPostId.creatorId?.profile?.fullName || item.parentPostId.creatorId?.recruiterProfile?.companyName || 'User',
-                            avatar: item.parentPostId.creatorId?.avatar,
+                            avatar: item.parentPostId.creatorId?.avatar || `https://ui-avatars.com/api/?name=User`,
                             content: item.parentPostId.content,
+                            attachments: (item.parentPostId.images || []).map((url: string) => ({ type: 'image', url })),
                         } : undefined,
                         attachments: [
                             ...(item.images ? item.images.map((img: string) => ({ type: 'image', url: img })) : []),

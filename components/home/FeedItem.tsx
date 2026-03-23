@@ -76,7 +76,7 @@ interface FeedItemProps {
             user: string;
             avatar: string;
             content: string;
-            attachments?: any[];
+            attachments?: Array<{ type: 'image' | 'video'; url: string; thumbnail?: string }> | string[];
         };
     };
     loading?: boolean;
@@ -265,18 +265,78 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                         </TouchableOpacity>
                     </View>
 
+                    {/* Reshared label */}
+                    {item.parentPost && (
+                        <View className="flex-row items-center mb-2" style={{ gap: 4 }}>
+                            <Ionicons name="repeat" size={13} color="#71717a" />
+                            <Text style={{ fontFamily: 'Outfit-Medium', color: '#71717a', fontSize: 12 }}>
+                                {item.user} reshared
+                            </Text>
+                        </View>
+                    )}
+
                     <Text className="text-[15px] mb-3" style={{ fontFamily: 'Outfit-Light', color: theme.text, lineHeight: 22 }}>
                         {item.content}
                     </Text>
 
                     {item.parentPost && (
-                        <View className="border rounded-xl p-3 mb-3" style={{ borderColor: isDark ? '#2f3336' : '#eff3f4', backgroundColor: isDark ? '#1a1a1a' : '#f8fafc' }}>
-                            <View className="flex-row items-center mb-2">
-                                <Image source={{ uri: item.parentPost.avatar }} className="w-5 h-5 rounded-full mr-2" />
-                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 12 }}>{item.parentPost.user}</Text>
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            style={{
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#2f3336' : '#e2e8f0',
+                                marginBottom: 12,
+                                overflow: 'hidden',
+                                backgroundColor: isDark ? '#16181c' : '#f8fafc'
+                            }}
+                        >
+                            {/* Original author header */}
+                            <View className="flex-row items-center px-3 pt-3 pb-2">
+                                <Image
+                                    source={{ uri: item.parentPost.avatar || `https://ui-avatars.com/api/?name=${item.parentPost.user}` }}
+                                    style={{ width: 28, height: 28, borderRadius: 14, marginRight: 8 }}
+                                />
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 13 }} numberOfLines={1}>
+                                    {item.parentPost.user}
+                                </Text>
+                                <View style={{ marginLeft: 6, backgroundColor: isDark ? '#2f3336' : '#e2e8f0', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                                    <Text style={{ fontFamily: 'Outfit-Medium', fontSize: 10, color: '#71717a' }}>Original</Text>
+                                </View>
                             </View>
-                            <Text style={{ fontFamily: 'Outfit-Regular', color: theme.text, fontSize: 13 }}>{item.parentPost.content}</Text>
-                        </View>
+                            {/* Original content */}
+                            {!!item.parentPost.content && (
+                                <Text style={{ fontFamily: 'Outfit-Regular', color: theme.text, fontSize: 13, lineHeight: 19, paddingHorizontal: 12, paddingBottom: item.parentPost.attachments?.length ? 8 : 12 }}>
+                                    {item.parentPost.content}
+                                </Text>
+                            )}
+                            {/* Original images */}
+                            {(() => {
+                                const atts = item.parentPost.attachments;
+                                if (!atts || atts.length === 0) return null;
+                                const imgUrls: string[] = atts
+                                    .map((a: any) => typeof a === 'string' ? a : (a.type === 'image' ? a.url : a.thumbnail || a.url))
+                                    .filter(Boolean);
+                                if (imgUrls.length === 0) return null;
+                                return (
+                                    <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: isDark ? '#2f3336' : '#e2e8f0' }}>
+                                        {imgUrls.slice(0, 3).map((uri: string, idx: number) => (
+                                            <Image
+                                                key={idx}
+                                                source={{ uri }}
+                                                style={{
+                                                    flex: 1,
+                                                    height: 120,
+                                                    borderLeftWidth: idx > 0 ? 1 : 0,
+                                                    borderColor: isDark ? '#2f3336' : '#e2e8f0'
+                                                }}
+                                                resizeMode="cover"
+                                            />
+                                        ))}
+                                    </View>
+                                );
+                            })()}
+                        </TouchableOpacity>
                     )}
 
                     {renderAttachments()}
