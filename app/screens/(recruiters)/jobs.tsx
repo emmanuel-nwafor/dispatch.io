@@ -1,8 +1,8 @@
 import { Colors } from '@/app/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     ScrollView,
     View,
@@ -46,9 +46,11 @@ export default function RecruitersJobs() {
         }
     };
 
-    useEffect(() => {
-        loadJobs();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            loadJobs();
+        }, [])
+    );
 
     const onRefresh = () => {
         setRefreshing(true);

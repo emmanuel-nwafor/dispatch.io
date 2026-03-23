@@ -61,12 +61,12 @@ export default function RecruiterTabLayout() {
             />
 
             <Tabs.Screen
-                name="messages"
+                name="applicants"
                 options={{
-                    title: 'Messaging',
+                    title: 'Applicants',
                     tabBarIcon: ({ color, focused }) => (
                         <View>
-                            <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={24} color={color} />
+                            <Ionicons name={focused ? "people" : "people-outline"} size={24} color={color} />
                             {/* Typical LinkedIn Notification Dot */}
                             <View className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900" />
                         </View>

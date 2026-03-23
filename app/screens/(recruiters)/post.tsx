@@ -37,6 +37,7 @@ export default function RecruitersPost() {
     const [jobType, setJobType] = useState('Remote');
     const [description, setDescription] = useState('');
     const [skills, setSkills] = useState('');
+    const [applicationMethod, setApplicationMethod] = useState<'email' | 'external'>('email');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingJob, setIsLoadingJob] = useState(false);
 
@@ -65,6 +66,35 @@ export default function RecruitersPost() {
         }
     };
 
+    const validateStep = () => {
+        if (step === 1) {
+            if (!title.trim()) {
+                Alert.alert("Required", "Please enter a job title.");
+                return false;
+            }
+        } else if (step === 2) {
+            if (!description.trim()) {
+                Alert.alert("Required", "Please enter a job description.");
+                return false;
+            }
+            if (!skills.trim()) {
+                Alert.alert("Required", "Please add at least one skill.");
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const handleNext = () => {
+        if (validateStep()) {
+            if (step < totalSteps) {
+                setStep(step + 1);
+            } else {
+                handlePostJob();
+            }
+        }
+    };
+
     const handlePostJob = async () => {
         if (!title.trim() || !description.trim()) {
             Alert.alert("Missing Fields", "Please provide at least a title and description for the job.");
@@ -75,13 +105,15 @@ export default function RecruitersPost() {
         try {
             const payload = {
                 title,
+                companyName: currentUser?.recruiterProfile?.companyName || "Your Company",
                 description,
-                jobType,
-                location: jobType === 'Remote' ? 'Remote' : 'Company Office', // simplified logic
+                jobType: jobType === 'Remote' ? 'Remote' : (jobType === 'On-site' ? 'Full-time' : 'Contract'),
+                location: jobType === 'Remote' ? 'Remote' : (currentUser?.recruiterProfile?.location || 'Company Office'),
                 skillsRequired: skills.split(',').map(s => s.trim()).filter(Boolean),
-                salaryRange: { min: 80000, max: 150000, currency: 'USD' }, // Default range since UI doesn't collect it yet
-                experienceLevel: 'Mid-Level',
-                status: 'open'
+                salaryRange: { min: 80000, max: 150000, currency: 'USD' },
+                experienceLevel: 'Mid',
+                status: 'open',
+                applicationMethod
             };
 
             let res;
@@ -93,7 +125,7 @@ export default function RecruitersPost() {
 
             if (res.success) {
                 Alert.alert("Success", id ? "Job updated successfully!" : "Job posted successfully!");
-                router.back();
+                router.replace('/screens/(recruiters)/jobs');
             }
         } catch (error) {
             console.error("Failed to save job:", error);
@@ -219,26 +251,52 @@ export default function RecruitersPost() {
             <Text style={[styles.stepTitle, { color: theme.text }]}>Finalize and post</Text>
 
             <View style={styles.previewCard}>
-                <View style={[styles.infoBox, { backgroundColor: isDark ? '#111111' : '#f9f9f9', borderColor: isDark ? '#27272a' : '#e4e4e7' }]}>
-                    <Ionicons name="eye-outline" size={24} color={theme.brand} />
-                    <View style={styles.infoBoxText}>
-                        <Text style={[styles.infoBoxTitle, { color: theme.text }]}>Preview your post</Text>
-                        <Text style={styles.infoBoxDesc}>See how your job listing will appear to candidates before it goes live.</Text>
+                <Text style={[styles.previewSectionTitle, { color: theme.text }]}>Preview</Text>
+                <View style={[styles.previewBox, { backgroundColor: isDark ? '#111111' : '#f9f9f9', borderColor: isDark ? '#27272a' : '#e4e4e7' }]}>
+                    <Text style={[styles.previewTitle, { color: theme.text }]}>{title || "Job Title"}</Text>
+                    <Text style={styles.previewSubtitle}>{currentUser?.recruiterProfile?.companyName || "Company Name"} • {jobType}</Text>
+
+                    <View style={styles.previewDivider} />
+
+                    <Text style={[styles.previewLabel, { color: theme.text }]}>Description</Text>
+                    <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={4}>{description || "No description provided."}</Text>
+
+                    <Text style={[styles.previewLabel, { color: theme.text, marginTop: 12 }]}>Skills</Text>
+                    <View style={styles.previewSkillsContainer}>
+                        {skills ? skills.split(',').map((s, i) => (
+                            <View key={i} style={[styles.previewSkillBadge, { backgroundColor: isDark ? '#27272a' : '#e4e4e7' }]}>
+                                <Text style={[styles.previewSkillText, { color: theme.text }]}>{s.trim()}</Text>
+                            </View>
+                        )) : <Text style={styles.previewText}>No skills added.</Text>}
                     </View>
                 </View>
             </View>
 
             <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: theme.text }]}>How do you want to receive applicants?</Text>
-                <TouchableOpacity style={[styles.optionRow, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}>
-                    <Ionicons name="mail-outline" size={20} color="#71717a" />
-                    <Text style={[styles.optionText, { color: theme.text }]}>Email (emmanuel@dispatch.io)</Text>
-                    <Ionicons name="radio-button-on" size={20} color={theme.brand} />
+                <TouchableOpacity
+                    style={[styles.optionRow, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}
+                    onPress={() => setApplicationMethod('email')}
+                >
+                    <Ionicons name="mail-outline" size={20} color={applicationMethod === 'email' ? theme.brand : "#71717a"} />
+                    <Text style={[styles.optionText, { color: theme.text }]}>Email ({currentUser?.email || "your-email"})</Text>
+                    <Ionicons
+                        name={applicationMethod === 'email' ? "radio-button-on" : "radio-button-off"}
+                        size={20}
+                        color={applicationMethod === 'email' ? theme.brand : "#71717a"}
+                    />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.optionRow}>
-                    <Ionicons name="globe-outline" size={20} color="#71717a" />
+                <TouchableOpacity
+                    style={styles.optionRow}
+                    onPress={() => setApplicationMethod('external')}
+                >
+                    <Ionicons name="globe-outline" size={20} color={applicationMethod === 'external' ? theme.brand : "#71717a"} />
                     <Text style={[styles.optionText, { color: theme.text }]}>External website</Text>
-                    <Ionicons name="radio-button-off" size={20} color="#71717a" />
+                    <Ionicons
+                        name={applicationMethod === 'external' ? "radio-button-on" : "radio-button-off"}
+                        size={20}
+                        color={applicationMethod === 'external' ? theme.brand : "#71717a"}
+                    />
                 </TouchableOpacity>
             </View>
         </View>
@@ -259,18 +317,26 @@ export default function RecruitersPost() {
                         <ActivityIndicator size="large" color={theme.brand} />
                     </View>
                 ) : (
-                    <>
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                    <View style={{ flex: 1 }}>
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 24 }}
+                            style={{ flex: 1 }}
+                        >
                             {step === 1 && renderStep1()}
                             {step === 2 && renderStep2()}
                             {step === 3 && renderStep3()}
                         </ScrollView>
 
-                        <View style={[styles.footer, { borderTopColor: isDark ? '#27272a' : '#f4f4f5' }]}>
+                        <View style={[styles.footer, {
+                            borderTopColor: isDark ? '#27272a' : '#f4f4f5',
+                            backgroundColor: theme.background,
+                            paddingBottom: Platform.OS === 'ios' ? 120 : 130 // Account for absolute tab bar
+                        }]}>
                             <TouchableOpacity
                                 style={[styles.nextButton, { backgroundColor: theme.brand }]}
                                 disabled={isSubmitting}
-                                onPress={() => step < totalSteps ? setStep(step + 1) : handlePostJob()}
+                                onPress={handleNext}
                             >
                                 {isSubmitting ? (
                                     <ActivityIndicator color="#000" />
@@ -281,7 +347,7 @@ export default function RecruitersPost() {
                                 )}
                             </TouchableOpacity>
                         </View>
-                    </>
+                    </View>
                 )}
             </SafeAreaView>
         </KeyboardAvoidingView>
@@ -418,14 +484,9 @@ const styles = StyleSheet.create({
         fontSize: 15,
     },
     footer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         paddingHorizontal: 16,
         paddingVertical: 16,
         borderTopWidth: 1,
-        backgroundColor: 'transparent',
     },
     nextButton: {
         height: 52,
@@ -437,5 +498,55 @@ const styles = StyleSheet.create({
         fontFamily: 'Outfit-Bold',
         fontSize: 16,
         color: '#000',
+    },
+    previewSectionTitle: {
+        fontFamily: 'Outfit-Bold',
+        fontSize: 16,
+        marginBottom: 12,
+    },
+    previewBox: {
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    previewTitle: {
+        fontFamily: 'Outfit-Bold',
+        fontSize: 18,
+        marginBottom: 4,
+    },
+    previewSubtitle: {
+        fontFamily: 'Outfit-Medium',
+        fontSize: 14,
+        color: '#71717a',
+        marginBottom: 12,
+    },
+    previewDivider: {
+        height: 1,
+        backgroundColor: '#e4e4e7',
+        marginVertical: 12,
+    },
+    previewLabel: {
+        fontFamily: 'Outfit-Bold',
+        fontSize: 13,
+        marginBottom: 6,
+    },
+    previewText: {
+        fontFamily: 'Outfit-Regular',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    previewSkillsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    previewSkillBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    previewSkillText: {
+        fontFamily: 'Outfit-Medium',
+        fontSize: 12,
     }
 });

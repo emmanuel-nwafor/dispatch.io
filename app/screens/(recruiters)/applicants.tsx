@@ -73,9 +73,9 @@ export default function ApplicantsScreen() {
                                     style={[styles.applicantCard, { borderBottomColor: isDark ? '#27272a' : '#f4f4f5' }]}
                                     onPress={() => router.push(`/screens/profile/${a.user?._id || a._id}` as any)}
                                 >
-                                    <Image 
-                                        source={{ uri: a.user?.avatar || a.avatar || `https://i.pravatar.cc/150?u=${idx}` }} 
-                                        style={styles.avatar} 
+                                    <Image
+                                        source={{ uri: a.user?.avatar || a.avatar || `https://i.pravatar.cc/150?u=${idx}` }}
+                                        style={styles.avatar}
                                     />
                                     <View style={styles.applicantInfo}>
                                         <Text style={[styles.name, { color: theme.text }]}>
