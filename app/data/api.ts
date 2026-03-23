@@ -112,6 +112,7 @@ export interface JobsResponse {
 }
 
 export interface Reel {
+    comments: never[];
     _id: string;
     title: string;
     description: string;
@@ -355,8 +356,14 @@ export const reels = {
         });
     },
     like: (id: string) => {
-        return request<{ success: boolean }>(`/reels/${id}/like`, {
+        return request<{ success: boolean; data: Reel }>(`/reels/${id}/like`, {
             method: 'POST',
+        });
+    },
+    comment: (id: string, text: string) => {
+        return request<{ success: boolean; data: Reel }>(`/reels/${id}/comment`, {
+            method: 'POST',
+            body: JSON.stringify({ text }),
         });
     }
 };

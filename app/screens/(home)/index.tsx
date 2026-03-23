@@ -46,6 +46,20 @@ export default function UsersHomeScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [feedData, setFeedData] = useState<any[]>([]);
 
+    const formatTime = (dateString: string) => {
+        if (!dateString) return 'now';
+        const now = new Date();
+        const past = new Date(dateString);
+        const diffMs = now.getTime() - past.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60) ;
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMins < 60) return `${diffMins}m`;
+        if (diffHours < 24) return `${diffHours}h`;
+        return `${diffDays}d`;
+    };
+
     const loadFeed = useCallback(async (isRefreshing = false) => {
         if (!isRefreshing) {
             // Keep UI stable but show loading state
@@ -67,18 +81,23 @@ export default function UsersHomeScreen() {
                         user: creatorName,
                         handle: `@${creatorName.replace(/\s+/g, '').toLowerCase()}`,
                         avatar: item.recruiter?.avatar || item.creatorId?.avatar || `https://ui-avatars.com/api/?name=${creatorName.replace(/\s+/g, '+')}`,
-                        time: '2h',
+                        time: formatTime(item.createdAt),
                         content: isJob ? item.description : item.content,
-                        isLiked: item.likes?.includes(currentUser?._id),
-                        isReshared: item.reshares?.some((r: any) => (r.userId || r) === currentUser?._id),
+                        isLiked: item.likes?.includes(currentUser?._id || currentUser?.id),
+                        isReshared: item.reshares?.some((r: any) => (r.userId || r) === (currentUser?._id || currentUser?.id)),
                         jobRole: item.title,
                         salary: isJob ? `${item.salaryRange?.min}-${item.salaryRange?.max}` : undefined,
                         location: item.location || 'Remote',
                         stats: {
-                            comments: '12',
-                            reposts: '5',
+                            comments: String(item.comments?.length || 0),
+                            reposts: String(item.reshares?.length || 0),
                             likes: isJob ? String(item.applicantsCount || 0) : String(item.likes?.length || 0)
                         },
+                        parentPost: item.parentPostId ? {
+                            user: item.parentPostId.creatorId?.profile?.fullName || item.parentPostId.creatorId?.recruiterProfile?.companyName || 'User',
+                            avatar: item.parentPostId.creatorId?.avatar,
+                            content: item.parentPostId.content,
+                        } : undefined,
                         attachments: [
                             ...(item.images ? item.images.map((img: string) => ({ type: 'image', url: img })) : []),
                             ...(item.videoUrl ? [{
@@ -101,7 +120,7 @@ export default function UsersHomeScreen() {
             setIsLoadingFeed(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [currentUser]);
 
     useFocusEffect(
         useCallback(() => {

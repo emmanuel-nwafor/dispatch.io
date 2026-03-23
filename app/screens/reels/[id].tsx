@@ -11,10 +11,13 @@ import {
     Platform,
     StatusBar
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { router, useLocalSearchParams, useRouter } from 'expo-router';
 import { Video, ResizeMode, AVPlaybackStatus, Audio } from 'expo-av';
-import { feeds } from '@/app/data/api';
+import { feeds, reels as reelsApi, user as userApi } from '@/app/data/api';
+import { useUserStore } from '@/hooks/useUserStore';
+import { storage } from '@/app/utils/storage';
 import { Ionicons } from '@expo/vector-icons';
+import CommentsModal from '@/components/modals/CommentsModal';
 import { LinearGradient } from 'expo-linear-gradient';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import * as Haptics from 'expo-haptics';
@@ -27,6 +30,30 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
     const videoRef = useRef<Video>(null);
     const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
     const [isLiked, setIsLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(item.likes?.length || 0);
+    const [showComments, setShowComments] = useState(false);
+    const [comments, setComments] = useState<any[]>(item.comments || []);
+    const [userId, setUserId] = useState<string | null>(null);
+    const [isFollowing, setIsFollowing] = useState(false);
+    
+    const { user: currentUser } = useUserStore();
+    
+    useEffect(() => {
+        if (currentUser && item.creatorId?._id) {
+            setIsFollowing(currentUser.following?.includes(item.creatorId._id));
+        }
+    }, [currentUser, item.creatorId?._id]);
+
+    useEffect(() => {
+        const checkUser = async () => {
+            const user = await storage.getUser();
+            if (user) {
+                setUserId(user._id || user.id);
+                setIsLiked(item.likes?.includes(user._id || user.id));
+            }
+        };
+        checkUser();
+    }, [item.likes]);
 
     useEffect(() => {
         const prepareAudio = async () => {
@@ -61,9 +88,43 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
         }
     };
 
-    const handleLike = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setIsLiked(!isLiked);
+    const handleLike = async () => {
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            const newIsLiked = !isLiked;
+            setIsLiked(newIsLiked);
+            setLikeCount((prev: number) => newIsLiked ? prev + 1 : prev - 1);
+
+            await reelsApi.like(item._id);
+        } catch (error) {
+            console.error('Like error', error);
+            // Rollback on error
+            setIsLiked(!isLiked);
+            setLikeCount((prev: number) => isLiked ? prev + 1 : prev - 1);
+        }
+    };
+
+    const handleComment = async (text: string) => {
+        try {
+            const res = await reelsApi.comment(item._id, text);
+            if (res.success) {
+                setComments(res.data.comments || []);
+            }
+        } catch (error) {
+            console.error('Failed to comment on reel:', error);
+        }
+    };
+
+    const handleFollow = async () => {
+        if (!item.creatorId?._id) return;
+        try {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setIsFollowing(true);
+            await userApi.follow(item.creatorId._id);
+        } catch (error) {
+            console.error('Failed to follow user:', error);
+            setIsFollowing(false);
+        }
     };
 
     const getProgress = () => {
@@ -105,14 +166,25 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
 
                 {/* Sidebar */}
                 <View style={styles.rightSidebar}>
-                    <TouchableOpacity style={styles.profileContainer}>
+                    <TouchableOpacity
+                        onPress={() => router.push(`/screens/profile/${item.creatorId?._id || item.creatorId}`)}
+                        style={styles.profileContainer}
+                    >
                         <Image
-                            source={{ uri: item.avatar || `https://ui-avatars.com/api/?name=${item.user}` }}
+                            source={{ uri: item.creatorId?.avatar || `https://ui-avatars.com/api/?name=${item.user || 'User'}` }}
                             style={styles.avatar}
                         />
-                        <View style={styles.plusIcon}>
-                            <Ionicons name="add" size={10} color="white" />
-                        </View>
+                        {!isFollowing && item.creatorId?._id !== currentUser?._id && (
+                            <TouchableOpacity 
+                                style={styles.plusIcon} 
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    handleFollow();
+                                }}
+                            >
+                                <Ionicons name="add" size={12} color="white" />
+                            </TouchableOpacity>
+                        )}
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
@@ -121,12 +193,15 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
                             size={wp('8.5%')}
                             color={isLiked ? "#FF2D55" : "white"}
                         />
-                        <Text style={styles.actionText}>{item.likes?.length || 0}</Text>
+                        <Text style={styles.actionText}>{likeCount}</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.actionButton}>
+                    <TouchableOpacity
+                        onPress={() => setShowComments(true)}
+                        style={styles.actionButton}
+                    >
                         <Ionicons name="chatbubble-outline" size={wp('8%')} color="white" />
-                        <Text style={styles.actionText}>{item.comments?.length || 0}</Text>
+                        <Text style={styles.actionText}>{comments.length}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionButton}>
@@ -152,6 +227,16 @@ const ReelPlayer = ({ item, isVisible }: { item: any, isVisible: boolean }) => {
                 <View style={styles.progressBarContainer}>
                     <View style={[styles.progressBar, { width: `${getProgress()}%` }]} />
                 </View>
+
+                <CommentsModal
+                    visible={showComments}
+                    onClose={() => setShowComments(false)}
+                    comments={comments.map((c: any) => ({
+                        user: c.userId?.profile?.fullName || c.userId?.username || 'User',
+                        text: c.text
+                    }))}
+                    onSend={handleComment}
+                />
             </TouchableOpacity>
         </View>
     );

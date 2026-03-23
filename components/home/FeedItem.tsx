@@ -72,6 +72,12 @@ interface FeedItemProps {
             url: string;
             thumbnail?: string;
         }>;
+        parentPost?: {
+            user: string;
+            avatar: string;
+            content: string;
+            attachments?: any[];
+        };
     };
     loading?: boolean;
     onPress?: () => void;
@@ -162,22 +168,9 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
         setShareVisible(!shareVisible);
     };
 
-    const handleCommentSubmit = async () => {
-        if (!commentText.trim()) return;
-        setIsSubmittingComment(true);
-        try {
-            const res = await posts.comment(item.id.toString(), commentText);
-            if (res.success) {
-                setCommentText('');
-                setIsCommenting(false);
-                Toast.show({ type: 'success', text1: 'Comment added' });
-            }
-        } catch (error) {
-            console.error('Failed to comment:', error);
-            Toast.show({ type: 'error', text1: 'Failed to add comment' });
-        } finally {
-            setIsSubmittingComment(false);
-        }
+    const handleCommentSubmit = () => {
+        // Disabled per user request: "should not be able to comment on a post via the feedItem"
+        router.push(`/screens/feed/${item.id}`);
     };
 
     const handlePress = () => {
@@ -276,6 +269,16 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                         {item.content}
                     </Text>
 
+                    {item.parentPost && (
+                        <View className="border rounded-xl p-3 mb-3" style={{ borderColor: isDark ? '#2f3336' : '#eff3f4', backgroundColor: isDark ? '#1a1a1a' : '#f8fafc' }}>
+                            <View className="flex-row items-center mb-2">
+                                <Image source={{ uri: item.parentPost.avatar }} className="w-5 h-5 rounded-full mr-2" />
+                                <Text style={{ fontFamily: 'Outfit-Bold', color: theme.text, fontSize: 12 }}>{item.parentPost.user}</Text>
+                            </View>
+                            <Text style={{ fontFamily: 'Outfit-Regular', color: theme.text, fontSize: 13 }}>{item.parentPost.content}</Text>
+                        </View>
+                    )}
+
                     {renderAttachments()}
 
                     {item.type === 'job' && (
@@ -292,8 +295,8 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
 
                     {/* Interaction Bar */}
                     <View className="flex-row justify-between pr-8 mt-1">
-                        <TouchableOpacity onPress={() => setIsCommenting(!isCommenting)} className="flex-row items-center">
-                            <Ionicons name="chatbubble-outline" size={18} color={isCommenting ? theme.brand : "#71717a"} />
+                        <TouchableOpacity onPress={handlePress} className="flex-row items-center">
+                            <Ionicons name="chatbubble-outline" size={18} color="#71717a" />
                             <Text className="ml-2 text-xs text-zinc-500" style={{ fontFamily: 'Outfit-Medium' }}>{item.stats?.comments || '0'}</Text>
                         </TouchableOpacity>
 
@@ -314,31 +317,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ item, loading, onPress, onApply, on
                         </TouchableOpacity>
                     </View>
 
-                    {/* Comment Input */}
-                    {isCommenting && (
-                        <View className="mt-4 flex-row items-center">
-                            <TextInput
-                                value={commentText}
-                                onChangeText={setCommentText}
-                                placeholder="Add a comment..."
-                                placeholderTextColor="#71717a"
-                                className="flex-1 p-2 rounded-xl bg-zinc-500/10"
-                                style={{ color: theme.text, fontFamily: 'Outfit-Regular' }}
-                                multiline
-                            />
-                            <TouchableOpacity 
-                                onPress={handleCommentSubmit} 
-                                disabled={isSubmittingComment || !commentText.trim()}
-                                className="ml-2 p-2"
-                            >
-                                {isSubmittingComment ? (
-                                    <ActivityIndicator size="small" color={theme.brand} />
-                                ) : (
-                                    <Ionicons name="send" size={20} color={commentText.trim() ? theme.brand : "#71717a"} />
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                    {/* Comment Input Disabled per user request */}
                 </View>
             </View>
 
